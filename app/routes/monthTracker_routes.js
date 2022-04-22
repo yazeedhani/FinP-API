@@ -5,6 +5,7 @@ const passport = require('passport')
 
 // pull in Mongoose model for examples
 const MonthTracker = require('../models/monthTracker')
+const User = require('../models/user')
 
 // this is a collection of methods that help us detect situations when we need
 // to throw a custom error
@@ -35,7 +36,7 @@ router.get('/monthTrackers', requireToken, (req, res, next) => {
 			// `monthTrackers` will be an array of Mongoose documents
 			// we want to convert each one to a POJO, so we use `.map` to
 			// apply `.toObject` to each one
-			return monthTrackers.map((example) => example.toObject())
+			return monthTrackers.map((monthTracker) => monthTracker.toObject())
 		})
 		// respond with status 200 and JSON of the monthTrackers
 		.then((monthTrackers) => res.status(200).json({ monthTrackers: monthTrackers }))
@@ -59,12 +60,17 @@ router.get('/monthTrackers/:id', requireToken, (req, res, next) => {
 // POST /monthTrackers
 router.post('/monthTrackers', requireToken, (req, res, next) => {
 	// set owner of new example to be current user
-	req.body.example.owner = req.user.id
+	console.log('req.user:', req.user)
+	console.log('req.body.monthTracker:', req.body.monthTracker)
+	console.log('req.body.monthTracker:', req.body.monthTracker)
+	req.body.monthTracker.owner = req.user._id
+	req.body.monthTracker.annualTakeHome = req.user.income
+	req.body.monthTracker.monthlyTakeHome = req.user.income / 12
 
-	MonthTracker.create(req.body.example)
+	MonthTracker.create(req.body.monthTracker)
 		// respond to succesful `create` with status 201 and JSON of new "example"
-		.then((example) => {
-			res.status(201).json({ example: example.toObject() })
+		.then((monthTracker) => {
+			res.status(201).json({ monthTracker: monthTracker.toObject() })
 		})
 		// if an error occurs, pass it off to our error handler
 		// the error handler needs the error message and the `res` object so that it
