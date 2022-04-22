@@ -4,7 +4,7 @@ const express = require('express')
 const passport = require('passport')
 
 // pull in Mongoose model for examples
-const Example = require('../models/example')
+const MonthTracker = require('../models/monthTracker')
 
 // this is a collection of methods that help us detect situations when we need
 // to throw a custom error
@@ -30,7 +30,7 @@ const router = express.Router()
 // INDEX
 // GET /examples
 router.get('/examples', requireToken, (req, res, next) => {
-	Example.find()
+	MonthTracker.find()
 		.then((examples) => {
 			// `examples` will be an array of Mongoose documents
 			// we want to convert each one to a POJO, so we use `.map` to
@@ -47,7 +47,7 @@ router.get('/examples', requireToken, (req, res, next) => {
 // GET /examples/5a7db6c74d55bc51bdf39793
 router.get('/examples/:id', requireToken, (req, res, next) => {
 	// req.params.id will be set based on the `:id` in the route
-	Example.findById(req.params.id)
+	MonthTracker.findById(req.params.id)
 		.then(handle404)
 		// if `findById` is succesful, respond with 200 and "example" JSON
 		.then((example) => res.status(200).json({ example: example.toObject() }))
@@ -61,7 +61,7 @@ router.post('/examples', requireToken, (req, res, next) => {
 	// set owner of new example to be current user
 	req.body.example.owner = req.user.id
 
-	Example.create(req.body.example)
+	MonthTracker.create(req.body.example)
 		// respond to succesful `create` with status 201 and JSON of new "example"
 		.then((example) => {
 			res.status(201).json({ example: example.toObject() })
@@ -79,7 +79,7 @@ router.patch('/examples/:id', requireToken, removeBlanks, (req, res, next) => {
 	// owner, prevent that by deleting that key/value pair
 	delete req.body.example.owner
 
-	Example.findById(req.params.id)
+	MonthTracker.findById(req.params.id)
 		.then(handle404)
 		.then((example) => {
 			// pass the `req` object and the Mongoose record to `requireOwnership`
@@ -98,7 +98,7 @@ router.patch('/examples/:id', requireToken, removeBlanks, (req, res, next) => {
 // DESTROY
 // DELETE /examples/5a7db6c74d55bc51bdf39793
 router.delete('/examples/:id', requireToken, (req, res, next) => {
-	Example.findById(req.params.id)
+	MonthTracker.findById(req.params.id)
 		.then(handle404)
 		.then((example) => {
 			// throw an error if current user doesn't own `example`

@@ -16,6 +16,7 @@ const BadParamsError = errors.BadParamsError
 const BadCredentialsError = errors.BadCredentialsError
 
 const User = require('../models/user')
+const Account = require('../models/account')
 
 // passing this as a second argument to `router.<verb>` will make it
 // so that a token MUST be passed for that route to be available
@@ -29,7 +30,7 @@ const router = express.Router()
 // POST /sign-up
 router.post('/sign-up', (req, res, next) => {
 	// start a promise chain, so that any errors will pass to `handle`
-	Promise.resolve(req.body.credentials)
+	const newUser = Promise.resolve(req.body.credentials)
 		// reject any requests where `credentials.password` is not present, or where
 		// the password is an empty string
 		.then((credentials) => {
@@ -46,16 +47,38 @@ router.post('/sign-up', (req, res, next) => {
 		.then((hash) => {
 			// return necessary params to create a user
 			return {
-				email: req.body.credentials.email,
+				username: req.body.credentials.username,
 				hashedPassword: hash,
+				income: req.body.credentials.income
 			}
 		})
-		// create user with provided email and hashed password
+		// create user with provided username and hashed password
 		.then((user) => User.create(user))
 		// send the new user object back with status 201, but `hashedPassword`
 		// won't be send because of the `transform` in the User model
-		.then((user) => res.status(201).json({ user: user.toObject() }))
+		// .then((user) => res.status(201).json({ user: user.toObject() }))
 		// pass any errors along to the error handler
+		.then( user => {
+			return user
+		})
+		.catch(next)
+
+	const newEmptyAccount = Account.create(req.body.account)
+		.then( account => {
+			return account
+		})
+		.catch(next)
+	
+	Promise.all([newUser, newEmptyAccount])
+		.then( responseData => {
+			const user = responseData[0]
+			const account = responseData[1]
+			console.log('response data - user', user)
+			console.log('response data - account', account)
+			account.owner = user._id
+			return account.save()
+		})
+		.then((responseData) => res.status(201).json({ responseData: responseData }))
 		.catch(next)
 })
 
@@ -65,10 +88,10 @@ router.post('/sign-in', (req, res, next) => {
 	const pw = req.body.credentials.password
 	let user
 
-	// find a user based on the email that was passed
-	User.findOne({ email: req.body.credentials.email })
+	// find a user based on the username that was passed
+	User.findOne({ username: req.body.credentials.username })
 		.then((record) => {
-			// if we didn't find a user with that email, send 401
+			// if we didn't find a user with that username, send 401
 			if (!record) {
 				throw new BadCredentialsError()
 			}
@@ -93,7 +116,7 @@ router.post('/sign-in', (req, res, next) => {
 			}
 		})
 		.then((user) => {
-			// return status 201, the email, and the new token
+			// return status 201, the username, and the new token
 			res.status(201).json({ user: user.toObject() })
 		})
 		.catch(next)

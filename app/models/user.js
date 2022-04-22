@@ -2,7 +2,7 @@ const mongoose = require('mongoose')
 
 const userSchema = new mongoose.Schema(
 	{
-		email: {
+		username: {
 			type: String,
 			required: true,
 			unique: true,
@@ -12,6 +12,10 @@ const userSchema = new mongoose.Schema(
 			required: true,
 		},
 		token: String,
+		income: {
+			type: Number,
+			required: true
+		},
 	},
 	{
 		timestamps: true,

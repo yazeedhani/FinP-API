@@ -1,5 +1,5 @@
 {
-  "name": "FinP-API",
+  "name": "finp-api",
   "version": "1.0.0",
   "description": "API for the FinP expense/budget tracker application",
   "main": "server.js",
