@@ -105,11 +105,11 @@ router.patch('/monthTrackers/:id', requireToken, removeBlanks, (req, res, next) 
 router.delete('/monthTrackers/:id', requireToken, (req, res, next) => {
 	MonthTracker.findById(req.params.id)
 		.then(handle404)
-		.then((example) => {
-			// throw an error if current user doesn't own `example`
-			requireOwnership(req, example)
-			// delete the example ONLY IF the above didn't throw
-			example.deleteOne()
+		.then((monthTracker) => {
+			// throw an error if current user doesn't own `monthTracker`
+			requireOwnership(req, monthTracker)
+			// delete the monthTracker ONLY IF the above didn't throw
+			monthTracker.deleteOne()
 		})
 		// send back 204 and no content if the deletion succeeded
 		.then(() => res.sendStatus(204))
