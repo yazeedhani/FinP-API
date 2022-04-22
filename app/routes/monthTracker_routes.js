@@ -50,8 +50,8 @@ router.get('/monthTrackers/:id', requireToken, (req, res, next) => {
 	// req.params.id will be set based on the `:id` in the route
 	MonthTracker.findById(req.params.id)
 		.then(handle404)
-		// if `findById` is succesful, respond with 200 and "example" JSON
-		.then((example) => res.status(200).json({ example: example.toObject() }))
+		// if `findById` is succesful, respond with 200 and "monthTracker" JSON
+		.then((monthTracker) => res.status(200).json({ monthTracker: monthTracker.toObject() }))
 		// if an error occurs, pass it to the handler
 		.catch(next)
 })
@@ -61,7 +61,6 @@ router.get('/monthTrackers/:id', requireToken, (req, res, next) => {
 router.post('/monthTrackers', requireToken, (req, res, next) => {
 	// set owner of new example to be current user
 	console.log('req.user:', req.user)
-	console.log('req.body.monthTracker:', req.body.monthTracker)
 	console.log('req.body.monthTracker:', req.body.monthTracker)
 	req.body.monthTracker.owner = req.user._id
 	req.body.monthTracker.annualTakeHome = req.user.income
