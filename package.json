@@ -1,13 +1,13 @@
 {
-  "name": "express-auth-mongoose-boilerplate",
+  "name": "FinP-API",
   "version": "1.0.0",
-  "description": "Auth boilerplate for mongoose express using token auth",
+  "description": "API for the FinP expense/budget tracker application",
   "main": "server.js",
   "scripts": {
     "start": "nodemon server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "Timm Schoenborn",
+  "author": "Yazeed Hani",
   "license": "ISC",
   "dependencies": {
     "bcrypt": "^5.0.1",
