@@ -151,6 +151,17 @@ router.get('/monthTrackers/:monthTrackerId/expenses', requireToken, (req, res, n
         .catch(next)
 })
 
+// SHOW -> GET /monthTrackers/:monthTrackerID/:expenseId - to display a single expense for a monthTracker
+router.get('/monthTrackers/:monthTrackerId/:expenseId', requireToken, (req, res, next) => {
+	const monthTrackerId = req.params.monthTrackerId
+	const expenseId = req.params.expenseId
+
+	Expense.findById(expenseId)
+		.then(handle404)
+		.then( expense => res.status(200).json({ expense: expense.toObject()}))
+		.catch(next)
+})
+
 // CREATE -> POST /monthTrackers/:monthTrackerId/expenses - to add an expense to the expenses array in a monthTracker
 router.post('/monthTrackers/:monthTrackerId/expenses', requireToken, (req, res, next) => {
 	const monthTrackerId = req.params.monthTrackerId
