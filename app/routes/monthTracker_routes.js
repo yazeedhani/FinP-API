@@ -117,9 +117,11 @@ router.patch('/monthTrackers/:id', requireToken, removeBlanks, (req, res, next) 
 })
 
 // DESTROY
-// DELETE /monthTrackers/5a7db6c74d55bc51bdf39793
-router.delete('/monthTrackers/:id', requireToken, (req, res, next) => {
-	MonthTracker.findById(req.params.id)
+// DELETE /monthTrackers/5a7db6c74d55bc51bdf39793 - deletes a monthTracker along with all of its expenses
+router.delete('/monthTrackers/:monthTrackerId', requireToken, (req, res, next) => {
+	const owner = req.user._id
+	const monthTrackerId = req.params.monthTrackerId
+	MonthTracker.findById(monthTrackerId)
 		.then(handle404)
 		.then((monthTracker) => {
 			// throw an error if current user doesn't own `monthTracker`
@@ -127,6 +129,7 @@ router.delete('/monthTrackers/:id', requireToken, (req, res, next) => {
 			// delete the monthTracker ONLY IF the above didn't throw
 			monthTracker.deleteOne()
 		})
+		Expense.deleteMany({monthTracker: monthTrackerId})
 		// send back 204 and no content if the deletion succeeded
 		.then(() => res.sendStatus(204))
 		// if an error occurs, pass it to the handler
@@ -152,7 +155,7 @@ router.get('/monthTrackers/:monthTrackerId/expenses', requireToken, (req, res, n
 router.post('/monthTrackers/:monthTrackerId/expenses', requireToken, (req, res, next) => {
 	const monthTrackerId = req.params.monthTrackerId
 	req.body.expense.owner = req.user._id
-
+	req.body.expense.monthTracker = monthTrackerId
 	// Create the expense
 	Expense.create(req.body.expense)
 		.then( expense => {

@@ -13,6 +13,11 @@ const expenseSchema = new mongoose.Schema({
         type: Number,
         required: true,
     },
+    monthTracker: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'MonthTracker',
+        required: true,
+    },
     owner: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
