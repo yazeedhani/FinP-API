@@ -73,9 +73,9 @@ router.post('/sign-up', (req, res, next) => {
 		.then( responseData => {
 			const user = responseData[0]
 			const account = responseData[1]
+			account.owner = user._id
 			console.log('response data - user', user)
 			console.log('response data - account', account)
-			account.owner = user._id
 			return account.save()
 		})
 		.then((responseData) => res.status(201).json({ responseData: responseData }))
