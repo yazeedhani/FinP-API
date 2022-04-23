@@ -20,6 +20,7 @@ const requireOwnership = customErrors.requireOwnership
 // this is middleware that will remove blank fields from `req.body`, e.g.
 // { example: { title: '', text: 'foo' } } -> { example: { text: 'foo' } }
 const removeBlanks = require('../../lib/remove_blank_fields')
+const { updateOne } = require('../models/monthTracker')
 // passing this as a second argument to `router.<verb>` will make it
 // so that a token MUST be passed for that route to be available
 // it will also set `req.user`
@@ -153,7 +154,6 @@ router.get('/monthTrackers/:monthTrackerId/expenses', requireToken, (req, res, n
 
 // SHOW -> GET /monthTrackers/:monthTrackerID/:expenseId - to display a single expense for a monthTracker
 router.get('/monthTrackers/:monthTrackerId/:expenseId', requireToken, (req, res, next) => {
-	const monthTrackerId = req.params.monthTrackerId
 	const expenseId = req.params.expenseId
 
 	Expense.findById(expenseId)
@@ -184,5 +184,24 @@ router.post('/monthTrackers/:monthTrackerId/expenses', requireToken, (req, res, 
 		.then( (expense) => res.status(201).json({ expense: expense.toObject() }) )
 		.catch(next)
 })
+
+// UPDATE/PATCH -> PATCH /monthTrackers/:monthTrackerID/:expenseId - to edit a single expense for a monthTracker
+router.patch('/monthTrackers/:monthTrackerID/:expenseId', requireToken, (req, res, next) => {
+	const monthTrackerId = req.params.monthTrackerId
+	const expenseId = req.params.expenseId
+
+	delete req.body.expense.owner
+
+	Expense.findById(expenseId)
+		.then(handle404)
+		.then( (expense) => {
+			requireOwnership(req, expense)
+			return expense.updateOne(req.body.expense)
+		})
+		.then ( () => res.sendStatus(204))
+		.catch(next)
+})
+
+// DELETE 
 
 module.exports = router
