@@ -19,6 +19,14 @@ const monthTrackerSchema = new mongoose.Schema(
 		budget: {
 			type: Number,
 		},
+		monthly_savings: {
+			type: Number,
+			default: 0,
+		},
+		monthly_cashflow: {
+			type: Number,
+			default: 0,
+		},
 		expenses: 
 			[
 				{
