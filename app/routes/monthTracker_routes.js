@@ -20,7 +20,8 @@ const requireOwnership = customErrors.requireOwnership
 // this is middleware that will remove blank fields from `req.body`, e.g.
 // { example: { title: '', text: 'foo' } } -> { example: { text: 'foo' } }
 const removeBlanks = require('../../lib/remove_blank_fields')
-const { updateOne } = require('../models/monthTracker')
+const { updateOne, deleteOne } = require('../models/monthTracker')
+const monthTracker = require('../models/monthTracker')
 // passing this as a second argument to `router.<verb>` will make it
 // so that a token MUST be passed for that route to be available
 // it will also set `req.user`
@@ -130,7 +131,7 @@ router.delete('/monthTrackers/:monthTrackerId', requireToken, (req, res, next) =
 			// delete the monthTracker ONLY IF the above didn't throw
 			monthTracker.deleteOne()
 		})
-		Expense.deleteMany({monthTracker: monthTrackerId})
+		.then( () => Expense.deleteMany({monthTracker: monthTrackerId}))
 		// send back 204 and no content if the deletion succeeded
 		.then(() => res.sendStatus(204))
 		// if an error occurs, pass it to the handler
@@ -138,6 +139,7 @@ router.delete('/monthTrackers/:monthTrackerId', requireToken, (req, res, next) =
 })
 
 /******************* EXPENSES ***********************/
+
 // INDEX -> GET /monthTrackers/:monthTrackerId/expenses - to display expenses array in a monthTracker
 router.get('/monthTrackers/:monthTrackerId/expenses', requireToken, (req, res, next) => {
     const monthTrackerId = req.params.monthTrackerId
@@ -158,7 +160,10 @@ router.get('/monthTrackers/:monthTrackerId/:expenseId', requireToken, (req, res,
 
 	Expense.findById(expenseId)
 		.then(handle404)
-		.then( expense => res.status(200).json({ expense: expense.toObject()}))
+		.then( expense => {
+			requireOwnership(req, expense)
+			res.status(200).json({ expense: expense.toObject()})
+		})
 		.catch(next)
 })
 
@@ -186,7 +191,7 @@ router.post('/monthTrackers/:monthTrackerId/expenses', requireToken, (req, res, 
 })
 
 // UPDATE/PATCH -> PATCH /monthTrackers/:monthTrackerID/:expenseId - to edit a single expense for a monthTracker
-router.patch('/monthTrackers/:monthTrackerID/:expenseId', requireToken, (req, res, next) => {
+router.patch('/monthTrackers/:monthTrackerId/:expenseId', requireToken, removeBlanks, (req, res, next) => {
 	const monthTrackerId = req.params.monthTrackerId
 	const expenseId = req.params.expenseId
 
@@ -202,6 +207,51 @@ router.patch('/monthTrackers/:monthTrackerID/:expenseId', requireToken, (req, re
 		.catch(next)
 })
 
-// DELETE 
+// DESTROY -> DELETE /monthTrackers/:monthTrackerID/:expenseId - to delete a single expense for a monthTracker
+// The expense must be removed from the expenses array in MonthTracker and delete the expense 
+router.delete('/monthTrackers/:monthTrackerId/:expenseId', requireToken, (req, res, next) => {
+	const monthTrackerId = req.params.monthTrackerId
+	const expenseId = req.params.expenseId
+
+	// This removes the expense from the expenses array in monthTracker
+	MonthTracker.findById(monthTrackerId)
+		.populate('expenses')
+		.then( (monthTracker) => {
+			requireOwnership(req, monthTracker)
+			const expenses = monthTracker.expenses
+			console.log('monthTracker in DELETE route', monthTracker)
+			console.log('expenses in DELETE route', expenses)
+			console.log('expenseId', expenseId)
+
+			// FIND THE INDEX OF THE EXPENSE IN THE EXPENSES ARRAY
+			let index = null
+			// Iterate through the expenses array
+			for(let i = 0; i < expenses.length; i++)
+			{
+				// Since each element is an object, check to see if that object contains the expenseId
+				// If the object contains the expenseId, then assign it to an index variable and exit the loop
+				if(expenses[i]._id == expenseId)
+				{
+					index = i
+					// Finally, remove the expense from the expenses array
+					expenses.splice(index, 1)
+					return monthTracker.save()
+				}
+			}
+		})
+		.then( () => {
+			// This deletes the expense
+			Expense.findById(expenseId)
+				.then(handle404)
+				.then( (expense) => {
+					requireOwnership(req, expense)
+					expense.deleteOne()
+				})
+				.then(() => res.sendStatus(204))
+				.catch(next)
+		})
+		.catch(next)
+
+})
 
 module.exports = router
