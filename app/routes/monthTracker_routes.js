@@ -6,6 +6,7 @@ const passport = require('passport')
 // pull in Mongoose model for examples
 const MonthTracker = require('../models/monthTracker')
 const Expense = require('../models/expense')
+const Account = require('../models/account')
 
 // this is a collection of methods that help us detect situations when we need
 // to throw a custom error
@@ -381,7 +382,18 @@ router.post('/monthTrackers/:monthTrackerId/expenses', requireToken, (req, res, 
 			// Add the new expense to its monthTracker
 			MonthTracker.findById(monthTrackerId)
 			.then( monthTracker => {
+				// console.log('EXPENSES: ', monthTracker)
 				monthTracker.expenses.push(expense)
+				if(expense.category === 'Savings')
+				{
+					monthTracker.monthly_savings += expense.amount
+					Account.findOne({owner: req.user._id})
+						.then( (account) => {
+							account.savings += expense.amount
+							return account.save()
+						})
+						.catch(next)
+				}
 				monthTracker.save()
 				return expense
 			})
@@ -459,17 +471,17 @@ router.delete('/monthTrackers/:monthTrackerId/:expenseId', requireToken, (req, r
 
 /******************* SAVINGS ***********************/
 // INDEX -> GET /monthTrackers/:monthTrackerId/savings - to display expenses array in a monthTracker
-router.get('/monthTrackers/:monthTrackerId/savings', requireToken, (req, res, next) => {
-    const monthTrackerId = req.params.monthTrackerId
+// router.get('/monthTrackers/:monthTrackerId/savings', requireToken, (req, res, next) => {
+//     const monthTrackerId = req.params.monthTrackerId
 
-    MonthTracker.findById(monthTrackerId)
-		.then(handle404)
-		.then( (monthTracker) => {
-			requireOwnership(req, monthTracker)
-			return monthTracker.expenses
-		})
-		.then( (expenses) => res.status(200).json({ expenses: expenses.toObject() }) )
-        .catch(next)
-})
+//     MonthTracker.findById(monthTrackerId)
+// 		.then(handle404)
+// 		.then( (monthTracker) => {
+// 			requireOwnership(req, monthTracker)
+// 			return monthTracker.expenses
+// 		})
+// 		.then( (expenses) => res.status(200).json({ expenses: expenses.toObject() }) )
+//         .catch(next)
+// })
 
 module.exports = router

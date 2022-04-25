@@ -32,7 +32,7 @@ const monthTrackerSchema = new mongoose.Schema(
 				{
 					type: mongoose.Schema.Types.ObjectId,
 					ref: 'Expense',
-					required: true,
+					// required: true,
 				}
 			]
 		,
