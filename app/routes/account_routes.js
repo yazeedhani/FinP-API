@@ -8,6 +8,7 @@ const handle404 = customErrors.handle404
 const requireOwnership = customErrors.requireOwnership
 
 const removeBlanks = require('../../lib/remove_blank_fields')
+const { route } = require('./monthTracker_routes')
 
 const requireToken = passport.authenticate('bearer', {session: false})
 
@@ -23,6 +24,15 @@ router.get('/account/:userId', requireToken, (req, res, next) => {
             requireOwnership(req, account)
             res.status(200).json({ account: account.toObject() })
         })
+})
+
+// UPDATE -> PATCH /account/avklakt0909fa09f0a9ra09 - update the logged in user's annual income
+router.patch('/account/:userId', requireToken, (req, res, next) => {
+    const loggedInUserId = req.params.userId
+    
+    Account.findOneAndUpdate({owner: loggedInUserId}, {income: req.body.account.income})
+        .then(() => res.sendStatus(204))
+        .catch(next)
 })
 
 module.exports = router

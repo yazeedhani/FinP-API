@@ -26,8 +26,7 @@ const requireToken = passport.authenticate('bearer', { session: false })
 // instantiate a router (mini app that only handles routes)
 const router = express.Router()
 
-// SIGN UP
-// POST /sign-up
+// SIGN UP -> POST /sign-up
 router.post('/sign-up', (req, res, next) => {
 	// start a promise chain, so that any errors will pass to `handle`
 	const newUser = Promise.resolve(req.body.credentials)
@@ -49,7 +48,7 @@ router.post('/sign-up', (req, res, next) => {
 			return {
 				username: req.body.credentials.username,
 				hashedPassword: hash,
-				income: req.body.credentials.income
+				// income: req.body.credentials.income
 			}
 		})
 		// create user with provided username and hashed password
@@ -65,6 +64,7 @@ router.post('/sign-up', (req, res, next) => {
 
 	const newEmptyAccount = Account.create(req.body.account)
 		.then( account => {
+			account.income = req.body.account.income
 			return account
 		})
 		.catch(next)
@@ -74,16 +74,16 @@ router.post('/sign-up', (req, res, next) => {
 			const user = responseData[0]
 			const account = responseData[1]
 			account.owner = user._id
-			console.log('response data - user', user)
-			console.log('response data - account', account)
+			
+			// console.log('response data - user', user)
+			// console.log('response data - account', account)
 			return account.save()
 		})
 		.then((responseData) => res.status(201).json({ responseData: responseData }))
 		.catch(next)
 })
 
-// SIGN IN
-// POST /sign-in
+// SIGN IN -> POST /sign-in
 router.post('/sign-in', (req, res, next) => {
 	const pw = req.body.credentials.password
 	let user
@@ -122,8 +122,7 @@ router.post('/sign-in', (req, res, next) => {
 		.catch(next)
 })
 
-// CHANGE password
-// PATCH /change-password
+// CHANGE password -> PATCH /change-password
 router.patch('/change-password', requireToken, (req, res, next) => {
 	let user
 	// `req.user` will be determined by decoding the token payload
@@ -156,6 +155,7 @@ router.patch('/change-password', requireToken, (req, res, next) => {
 		.catch(next)
 })
 
+// DESTROY -> DELETE /sign-out 
 router.delete('/sign-out', requireToken, (req, res, next) => {
 	// create a new random token for the user, invalidating the current one
 	req.user.token = crypto.randomBytes(16)

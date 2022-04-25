@@ -12,10 +12,10 @@ const userSchema = new mongoose.Schema(
 			required: true,
 		},
 		token: String,
-		income: {
-			type: Number,
-			required: true
-		},
+		// income: {
+		// 	type: Number,
+		// 	required: true
+		// },
 	},
 	{
 		timestamps: true,
