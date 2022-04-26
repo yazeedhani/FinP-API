@@ -29,6 +29,7 @@ const router = express.Router()
 // SIGN UP -> POST /sign-up
 router.post('/sign-up', (req, res, next) => {
 	// start a promise chain, so that any errors will pass to `handle`
+	console.log('REQ.BODY: ', req.body)
 	const newUser = Promise.resolve(req.body.credentials)
 		// reject any requests where `credentials.password` is not present, or where
 		// the password is an empty string
@@ -64,19 +65,21 @@ router.post('/sign-up', (req, res, next) => {
 
 	const newEmptyAccount = Account.create(req.body.account)
 		.then( account => {
-			account.income = req.body.account.income
+			console.log('ACCOUNT: ', account)
+			// account.income = req.body.account.annualIncome
 			return account
 		})
 		.catch(next)
 	
 	Promise.all([newUser, newEmptyAccount])
 		.then( responseData => {
+			console.log('RESPONSE DATA: ', responseData)
 			const user = responseData[0]
 			const account = responseData[1]
+			console.log('response data - user', user)
+			console.log('response data - account', account)
 			account.owner = user._id
 			
-			// console.log('response data - user', user)
-			// console.log('response data - account', account)
 			return account.save()
 		})
 		.then((responseData) => res.status(201).json({ responseData: responseData }))

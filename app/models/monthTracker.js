@@ -1,5 +1,7 @@
 const mongoose = require('mongoose')
 
+const Expense = require('./expense')
+
 const monthTrackerSchema = new mongoose.Schema(
 	{
 		month: {
@@ -44,7 +46,13 @@ const monthTrackerSchema = new mongoose.Schema(
 	},
 	{
 		timestamps: true,
+		toObject: {virtuals: true},
+		toJSON: {virtuals: true}
 	}
 )
+
+monthTrackerSchema.virtual('monthTrackerTitle').get(function() {
+	return `${this.month} ${this.year}`
+})
 
 module.exports = mongoose.model('MonthTracker', monthTrackerSchema)

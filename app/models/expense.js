@@ -1,5 +1,7 @@
 const mongoose = require('mongoose')
 
+const MonthTracker = require('./monthTracker')
+
 const expenseSchema = new mongoose.Schema({
     name: {
         type: String,
