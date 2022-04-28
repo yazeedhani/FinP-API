@@ -60,7 +60,7 @@ router.get('/monthTrackers', requireToken, (req, res, next) => {
 // SHOW -> GET /monthTrackers/5a7db6c74d55bc51bdf39793
 router.get('/monthTrackers/:id', requireToken, (req, res, next) => {
 	// req.params.id will be set based on the `:id` in the route
-	console.log('req.params.id: ', req.params.id)
+
 	MonthTracker.findById(req.params.id)
 		.populate('expenses')
 		.then(handle404)
