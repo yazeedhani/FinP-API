@@ -463,10 +463,53 @@ router.delete('/monthTrackers/:monthTrackerId/:expenseId', requireToken, (req, r
 				if(expenses[i]._id == expenseId)
 				{
 					index = i
-					// Finally, remove the expense from the expenses array
-					expenses.splice(index, 1)
-					return monthTracker.save()
+					if(expenses[i].category === 'Savings')
+					{
+						// Decrement the monthly_savings in monthTracker
+						monthTracker.monthly_savings -= expenses[i].amount
+						Account.findOne({owner: req.user._id})
+							.then( account => {
+								console.log('ACCOUNT: ', account)
+								console.log('I : ', i)
+								console.log('EXPENSE: ', expenses)
+								account.savings -= expenses[i].amount
+								return account.save()
+							})
+							.then( () => {
+								// Finally, remove the expense from the expenses array
+								expenses.splice(index, 1)
+								return monthTracker.save()
+							})
+							.catch(next)
+					}
+					else
+					{
+						expenses.splice(index, 1)
+						return monthTracker.save()
+					}
+					
 				}
+				// if(expenses[i]._id == expenseId)
+				// {
+				// 	if(expenses[i].category === 'Savings')
+				// 	{
+				// 		// Decrement the monthly_savings in monthTracker
+				// 		monthTracker.monthly_savings -= expenses[i].amount
+				// 		Account.findOne({owner: req.user._id})
+				// 			.then( account => {
+				// 				console.log('ACCOUNT: ', account)
+				// 				console.log('I : ', i)
+				// 				console.log('EXPENSE: ', expenses)
+				// 				account.savings -= expenses[i].amount
+				// 				return account.save()
+				// 			})
+				// 			.catch(next)
+				// 	}
+				// 	index = i
+				// 	// Finally, remove the expense from the expenses array
+				// 	expenses.splice(index, 1)
+				// 	return monthTracker.save()
+				// }
 			}
 		})
 		.then( () => {
