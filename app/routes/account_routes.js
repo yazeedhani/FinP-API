@@ -26,9 +26,9 @@ router.get('/account/:userId', requireToken, (req, res, next) => {
 })
 
 // UPDATE -> PATCH /account/avklakt0909fa09f0a9ra09 - update the logged in user's annual income
-router.patch('/account/:userId', requireToken, (req, res, next) => {
+router.patch('/account/:userId', requireToken, removeBlanks, (req, res, next) => {
     const loggedInUserId = req.params.userId
-    
+
     Account.findOneAndUpdate({owner: loggedInUserId}, {income: req.body.account.income})
         .then(() => res.sendStatus(204))
         .catch(next)

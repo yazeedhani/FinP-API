@@ -26,6 +26,7 @@ const expenseSchema = new mongoose.Schema({
         ref: 'User',
         required: true,
     }
-})
+}, { timestamps: true,}
+)
 
 module.exports = mongoose.model('Expense', expenseSchema)
