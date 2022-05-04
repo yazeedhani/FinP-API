@@ -195,7 +195,6 @@ router.post('/monthTrackers/:monthTrackerId/expense', requireToken, (req, res, n
 				// Add the new expense to the expenses array in the current monthTracker
 				MonthTracker.findById(monthTrackerId)
 					.then( monthTracker => {
-						// console.log('EXPENSES: ', monthTracker)
 						monthTracker.expenses.push(expense)
 						if(expense.category === 'Savings')
 						{
