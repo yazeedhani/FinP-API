@@ -7,6 +7,10 @@ const accountSchema = new mongoose.Schema({
         type: Number,
         default: 0,
     },
+    loans: {
+        type: Number,
+        default: 0
+    },
     cashflow: {
         type: Number,
         default: 0,

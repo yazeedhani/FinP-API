@@ -167,208 +167,6 @@ router.get('/monthTrackers/:monthTrackerId/expenses', requireToken, (req, res, n
 		.then( (expenses) => res.status(200).json({ expenses: expenses.toObject() }) )
         .catch(next)
 })
- 
-/***** EXPENSE CATEGORIES *****/
-
-// INDEX - Category: Entertainment -> GET /monthTrackers/:monthTrackerId/expenses/entertainment 
-// - To display expenses in the entertainment category ONLY in a monthTracker
-router.get('/monthTrackers/:monthTrackerId/expenses/entertainment', requireToken, (req, res, next) => {
-    const monthTrackerId = req.params.monthTrackerId
-
-    MonthTracker.findById(monthTrackerId)
-		.populate('expenses')
-		.then(handle404)
-		.then( (monthTracker) => {
-			requireOwnership(req, monthTracker)
-			return monthTracker.expenses
-		})
-		.then( (expenses) => {
-			entertainmentExpenses = expenses.filter(expense => {
-				return expense.category === 'Entertainment'
-			})
-			return entertainmentExpenses
-		})
-		.then( (expenses) => res.status(200).json({ expenses: expenses }) )
-        .catch(next)
-})
-
-// INDEX - Category: Housing -> GET /monthTrackers/:monthTrackerId/expenses/housing 
-// - To display expenses in the housing category ONLY in a monthTracker
-router.get('/monthTrackers/:monthTrackerId/expenses/housing', requireToken, (req, res, next) => {
-    const monthTrackerId = req.params.monthTrackerId
-
-    MonthTracker.findById(monthTrackerId)
-		.populate('expenses')
-		.then(handle404)
-		.then( (monthTracker) => {
-			requireOwnership(req, monthTracker)
-			return monthTracker.expenses
-		})
-		.then( (expenses) => {
-			entertainmentExpenses = expenses.filter(expense => {
-				return expense.category === 'Housing'
-			})
-			return entertainmentExpenses
-		})
-		.then( (expenses) => res.status(200).json({ expenses: expenses }) )
-        .catch(next)
-})
-
-// INDEX - Category: Food -> GET /monthTrackers/:monthTrackerId/expenses/food 
-// - To display expenses in the food category ONLY in a monthTracker
-router.get('/monthTrackers/:monthTrackerId/expenses/food', requireToken, (req, res, next) => {
-    const monthTrackerId = req.params.monthTrackerId
-
-    MonthTracker.findById(monthTrackerId)
-		.populate('expenses')
-		.then(handle404)
-		.then( (monthTracker) => {
-			requireOwnership(req, monthTracker)
-			return monthTracker.expenses
-		})
-		.then( (expenses) => {
-			entertainmentExpenses = expenses.filter(expense => {
-				return expense.category === 'Food'
-			})
-			return entertainmentExpenses
-		})
-		.then( (expenses) => res.status(200).json({ expenses: expenses }) )
-        .catch(next)
-})
-
-// INDEX - Category: Auto -> GET /monthTrackers/:monthTrackerId/expenses/auto 
-// - To display expenses in the food category ONLY in a monthTracker
-router.get('/monthTrackers/:monthTrackerId/expenses/auto', requireToken, (req, res, next) => {
-    const monthTrackerId = req.params.monthTrackerId
-
-    MonthTracker.findById(monthTrackerId)
-		.populate('expenses')
-		.then(handle404)
-		.then( (monthTracker) => {
-			requireOwnership(req, monthTracker)
-			return monthTracker.expenses
-		})
-		.then( (expenses) => {
-			entertainmentExpenses = expenses.filter(expense => {
-				return expense.category === 'Auto'
-			})
-			return entertainmentExpenses
-		})
-		.then( (expenses) => res.status(200).json({ expenses: expenses }) )
-        .catch(next)
-})
-
-// INDEX - Category: Health -> GET /monthTrackers/:monthTrackerId/expenses/health 
-// - To display expenses in the food category ONLY in a monthTracker
-router.get('/monthTrackers/:monthTrackerId/expenses/health', requireToken, (req, res, next) => {
-    const monthTrackerId = req.params.monthTrackerId
-
-    MonthTracker.findById(monthTrackerId)
-		.populate('expenses')
-		.then(handle404)
-		.then( (monthTracker) => {
-			requireOwnership(req, monthTracker)
-			return monthTracker.expenses
-		})
-		.then( (expenses) => {
-			entertainmentExpenses = expenses.filter(expense => {
-				return expense.category === 'Health'
-			})
-			return entertainmentExpenses
-		})
-		.then( (expenses) => res.status(200).json({ expenses: expenses }) )
-        .catch(next)
-})
-
-// INDEX - Category: Shopping -> GET /monthTrackers/:monthTrackerId/expenses/shopping 
-// - To display expenses in the shopping category ONLY in a monthTracker
-router.get('/monthTrackers/:monthTrackerId/expenses/shopping', requireToken, (req, res, next) => {
-    const monthTrackerId = req.params.monthTrackerId
-
-    MonthTracker.findById(monthTrackerId)
-		.populate('expenses')
-		.then(handle404)
-		.then( (monthTracker) => {
-			requireOwnership(req, monthTracker)
-			return monthTracker.expenses
-		})
-		.then( (expenses) => {
-			entertainmentExpenses = expenses.filter(expense => {
-				return expense.category === 'Shopping'
-			})
-			return entertainmentExpenses
-		})
-		.then( (expenses) => res.status(200).json({ expenses: expenses }) )
-        .catch(next)
-})
-
-// INDEX - Category: Restaurant -> GET /monthTrackers/:monthTrackerId/expenses/restaurant 
-// - To display expenses in the restaurant category ONLY in a monthTracker
-router.get('/monthTrackers/:monthTrackerId/expenses/restaurant', requireToken, (req, res, next) => {
-    const monthTrackerId = req.params.monthTrackerId
-
-    MonthTracker.findById(monthTrackerId)
-		.populate('expenses')
-		.then(handle404)
-		.then( (monthTracker) => {
-			requireOwnership(req, monthTracker)
-			return monthTracker.expenses
-		})
-		.then( (expenses) => {
-			entertainmentExpenses = expenses.filter(expense => {
-				return expense.category === 'Restaurant'
-			})
-			return entertainmentExpenses
-		})
-		.then( (expenses) => res.status(200).json({ expenses: expenses }) )
-        .catch(next)
-})
-
-// INDEX - Category: Loans -> GET /monthTrackers/:monthTrackerId/expenses/loans 
-// - To display expenses in the loans category ONLY in a monthTracker
-router.get('/monthTrackers/:monthTrackerId/expenses/loans', requireToken, (req, res, next) => {
-    const monthTrackerId = req.params.monthTrackerId
-
-    MonthTracker.findById(monthTrackerId)
-		.populate('expenses')
-		.then(handle404)
-		.then( (monthTracker) => {
-			requireOwnership(req, monthTracker)
-			return monthTracker.expenses
-		})
-		.then( (expenses) => {
-			entertainmentExpenses = expenses.filter(expense => {
-				return expense.category === 'Loans'
-			})
-			return entertainmentExpenses
-		})
-		.then( (expenses) => res.status(200).json({ expenses: expenses }) )
-        .catch(next)
-})
-
-// INDEX - Category: Other -> GET /monthTrackers/:monthTrackerId/expenses/other 
-// - To display expenses in the other category ONLY in a monthTracker
-router.get('/monthTrackers/:monthTrackerId/expenses/other', requireToken, (req, res, next) => {
-    const monthTrackerId = req.params.monthTrackerId
-
-    MonthTracker.findById(monthTrackerId)
-		.populate('expenses')
-		.then(handle404)
-		.then( (monthTracker) => {
-			requireOwnership(req, monthTracker)
-			return monthTracker.expenses
-		})
-		.then( (expenses) => {
-			entertainmentExpenses = expenses.filter(expense => {
-				return expense.category === 'Other'
-			})
-			return entertainmentExpenses
-		})
-		.then( (expenses) => res.status(200).json({ expenses: expenses }) )
-        .catch(next)
-})
-
-/***********************/
 
 // SHOW -> GET /monthTrackers/:monthTrackerID/:expenseId - to display a single expense for a monthTracker
 router.get('/monthTrackers/:monthTrackerId/:expenseId', requireToken, (req, res, next) => {
@@ -438,7 +236,7 @@ router.patch('/monthTrackers/:monthTrackerId/:expenseId', requireToken, removeBl
 })
 
 // DESTROY -> DELETE /monthTrackers/:monthTrackerID/:expenseId - to delete a single expense for a monthTracker
-// The expense must be removed from the expenses array in MonthTracker and delete the expense 
+// The expense must be removed from the expenses array in MonthTracker and delete the expense document
 router.delete('/monthTrackers/:monthTrackerId/:expenseId', requireToken, (req, res, next) => {
 	const monthTrackerId = req.params.monthTrackerId
 	const expenseId = req.params.expenseId
@@ -489,27 +287,6 @@ router.delete('/monthTrackers/:monthTrackerId/:expenseId', requireToken, (req, r
 					}
 					
 				}
-				// if(expenses[i]._id == expenseId)
-				// {
-				// 	if(expenses[i].category === 'Savings')
-				// 	{
-				// 		// Decrement the monthly_savings in monthTracker
-				// 		monthTracker.monthly_savings -= expenses[i].amount
-				// 		Account.findOne({owner: req.user._id})
-				// 			.then( account => {
-				// 				console.log('ACCOUNT: ', account)
-				// 				console.log('I : ', i)
-				// 				console.log('EXPENSE: ', expenses)
-				// 				account.savings -= expenses[i].amount
-				// 				return account.save()
-				// 			})
-				// 			.catch(next)
-				// 	}
-				// 	index = i
-				// 	// Finally, remove the expense from the expenses array
-				// 	expenses.splice(index, 1)
-				// 	return monthTracker.save()
-				// }
 			}
 		})
 		.then( () => {
@@ -526,20 +303,5 @@ router.delete('/monthTrackers/:monthTrackerId/:expenseId', requireToken, (req, r
 		.catch(next)
 
 })
-
-/******************* SAVINGS ***********************/
-// INDEX -> GET /monthTrackers/:monthTrackerId/savings - to display expenses array in a monthTracker
-// router.get('/monthTrackers/:monthTrackerId/savings', requireToken, (req, res, next) => {
-//     const monthTrackerId = req.params.monthTrackerId
-
-//     MonthTracker.findById(monthTrackerId)
-// 		.then(handle404)
-// 		.then( (monthTracker) => {
-// 			requireOwnership(req, monthTracker)
-// 			return monthTracker.expenses
-// 		})
-// 		.then( (expenses) => res.status(200).json({ expenses: expenses.toObject() }) )
-//         .catch(next)
-// })
 
 module.exports = router
