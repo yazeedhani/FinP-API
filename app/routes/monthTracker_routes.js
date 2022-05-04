@@ -254,6 +254,20 @@ router.patch('/monthTrackers/:monthTrackerId/:expenseId', requireToken, removeBl
 					})
 					.catch(next)
 			}
+			else if(expense.category === 'Loans')
+			{
+				console.log('LOANS UPDATED')
+				MonthTracker.findById(monthTrackerId)
+					.then( monthTracker => {
+						Account.findOne({owner: req.user._id})
+							.then( account => {
+								return account.updateOne({ loans: ((account.loans + monthTracker.monthly_loan_payments) - req.body.expense.amount) })
+							})
+							.catch(next)
+						return monthTracker.updateOne({ monthly_loan_payments: req.body.expense.amount })
+					})
+					.catch(next)
+			}
 			return expense.updateOne(req.body.expense)
 		})
 		.then ( () => res.sendStatus(204))
