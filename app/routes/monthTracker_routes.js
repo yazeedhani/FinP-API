@@ -229,6 +229,7 @@ router.post('/monthTrackers/:monthTrackerId/expense', requireToken, (req, res, n
 })
 
 // UPDATE/PATCH -> PATCH /monthTrackers/:monthTrackerID/:expenseId - to edit a single expense for a monthTracker
+// If expense is in the Savings category, then update the savings in the monthTracker and accounts documents to reflect the change
 router.patch('/monthTrackers/:monthTrackerId/:expenseId', requireToken, removeBlanks, (req, res, next) => {
 	const monthTrackerId = req.params.monthTrackerId
 	const expenseId = req.params.expenseId
@@ -239,6 +240,20 @@ router.patch('/monthTrackers/:monthTrackerId/:expenseId', requireToken, removeBl
 		.then(handle404)
 		.then( (expense) => {
 			requireOwnership(req, expense)
+			if(expense.category === 'Savings')
+			{
+				console.log('SAVINGS UPDATED')
+				MonthTracker.findById(monthTrackerId)
+					.then( monthTracker => {
+						return monthTracker.updateOne({ monthly_savings: req.body.expense.amount })
+					})
+					.catch(next)
+				Account.findOne({owner: req.user._id})
+					.then( account => {
+						return account.updateOne({ savings: req.body.expense.amount })
+					})
+					.catch(next)
+			}
 			return expense.updateOne(req.body.expense)
 		})
 		.then ( () => res.sendStatus(204))
