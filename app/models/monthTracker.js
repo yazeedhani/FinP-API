@@ -25,6 +25,10 @@ const monthTrackerSchema = new mongoose.Schema(
 			type: Number,
 			default: 0,
 		},
+		monthly_loan_payments: {
+			type: Number,
+			default: 0
+		},
 		monthly_cashflow: {
 			type: Number,
 			default: 0,

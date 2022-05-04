@@ -207,6 +207,16 @@ router.post('/monthTrackers/:monthTrackerId/expense', requireToken, (req, res, n
 								})
 								.catch(next)
 						}
+						else if(expense.category === 'Loans')
+						{
+							monthTracker.monthly_loan_payments += expense.amount
+							Account.findOne({owner: req.user._id})
+								.then( (account) => {
+									account.loans -= expense.amount
+									return account.save()
+								})
+								.catch(next)
+						}
 						monthTracker.save()
 						return expense
 					})
