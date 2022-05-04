@@ -319,6 +319,25 @@ router.delete('/monthTrackers/:monthTrackerId/:expenseId', requireToken, (req, r
 							})
 							.catch(next)
 					}
+					else if(expenses[i].category === 'Loans')
+					{
+						// Decrement the monthly_savings in monthTracker
+						monthTracker.monthly_loan_payments -= expenses[i].amount
+						Account.findOne({owner: req.user._id})
+							.then( account => {
+								console.log('ACCOUNT: ', account)
+								console.log('I : ', i)
+								console.log('EXPENSE: ', expenses)
+								account.loans += expenses[i].amount
+								return account.save()
+							})
+							.then( () => {
+								// Finally, remove the expense from the expenses array
+								expenses.splice(index, 1)
+								return monthTracker.save()
+							})
+							.catch(next)
+					}
 					else
 					{
 						expenses.splice(index, 1)
