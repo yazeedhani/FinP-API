@@ -235,44 +235,6 @@ router.patch('/monthTrackers/:monthTrackerId/:expenseId', requireToken, removeBl
 
 	delete req.body.expense.owner
 
-	// Expense.findById(expenseId)
-	// 	.then(handle404)
-	// 	.then( (expense) => {
-	// 		requireOwnership(req, expense)
-	// 		return expense.updateOne(req.body.expense)
-	// 	})
-	// 	.then( (expense) => {
-	// 		if(expense.category === 'Savings')
-	// 		{
-	// 			console.log('SAVINGS UPDATED')
-	// 			MonthTracker.findById(monthTrackerId)
-	// 				.then( monthTracker => {
-	// 					return monthTracker.updateOne({ monthly_savings: req.body.expense.amount })
-	// 				})
-	// 				.catch(next)
-	// 			Account.findOne({owner: req.user._id})
-	// 				.then( account => {
-	// 					return account.updateOne({ savings: req.body.expense.amount })
-	// 				})
-	// 				.catch(next)
-	// 		}
-	// 		else if(expense.category === 'Loans')
-	// 		{
-	// 			console.log('LOANS UPDATED')
-	// 			MonthTracker.findById(monthTrackerId)
-	// 				.then( monthTracker => {
-	// 					Account.findOne({owner: req.user._id})
-	// 						.then( account => {
-	// 							return account.updateOne({ loans: ((account.loans + monthTracker.monthly_loan_payments) - req.body.expense.amount) })
-	// 						})
-	// 						.catch(next)
-	// 					return monthTracker.updateOne({ monthly_loan_payments: req.body.expense.amount })
-	// 				})
-	// 				.catch(next)
-	// 		}
-	// 	})
-	// 	.then ( () => res.sendStatus(204))
-	// 	.catch(next)
 	Expense.findById(expenseId)
 		.then(handle404)
 		.then( (expense) => {
@@ -280,14 +242,20 @@ router.patch('/monthTrackers/:monthTrackerId/:expenseId', requireToken, removeBl
 			if(expense.category === 'Savings')
 			{
 				console.log('SAVINGS UPDATED')
+				console.log('EXPENSE.AMOUNT: ', expense.amount)
+				const updatedSavingsExpense = parseFloat(req.body.expense.amount)
+				console.log('REQ.BODY.EXPENSE.AMOUNT: ', updatedSavingsExpense)
 				MonthTracker.findById(monthTrackerId)
 					.then( monthTracker => {
-						return monthTracker.updateOne({ monthly_savings: req.body.expense.amount })
-					})
-					.catch(next)
-				Account.findOne({owner: req.user._id})
-					.then( account => {
-						return account.updateOne({ savings: req.body.expense.amount })
+						console.log('MONTHTRACKER SAVINGS:', monthTracker.monthly_savings)
+						Account.findOne({owner: req.user._id})
+							.then( account => {
+									console.log('ACCOUNT:', account)
+									console.log('ACCOUNT SAVINGS:', account.savings)
+									return account.updateOne({ savings: (account.savings - monthTracker.monthly_savings) + (monthTracker.monthly_savings - expense.amount + updatedSavingsExpense) })
+								})
+							.catch(next)
+						return monthTracker.updateOne({ monthly_savings: monthTracker.monthly_savings - expense.amount + updatedSavingsExpense })
 					})
 					.catch(next)
 			}
