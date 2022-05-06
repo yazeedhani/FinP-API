@@ -235,6 +235,44 @@ router.patch('/monthTrackers/:monthTrackerId/:expenseId', requireToken, removeBl
 
 	delete req.body.expense.owner
 
+	// Expense.findById(expenseId)
+	// 	.then(handle404)
+	// 	.then( (expense) => {
+	// 		requireOwnership(req, expense)
+	// 		return expense.updateOne(req.body.expense)
+	// 	})
+	// 	.then( (expense) => {
+	// 		if(expense.category === 'Savings')
+	// 		{
+	// 			console.log('SAVINGS UPDATED')
+	// 			MonthTracker.findById(monthTrackerId)
+	// 				.then( monthTracker => {
+	// 					return monthTracker.updateOne({ monthly_savings: req.body.expense.amount })
+	// 				})
+	// 				.catch(next)
+	// 			Account.findOne({owner: req.user._id})
+	// 				.then( account => {
+	// 					return account.updateOne({ savings: req.body.expense.amount })
+	// 				})
+	// 				.catch(next)
+	// 		}
+	// 		else if(expense.category === 'Loans')
+	// 		{
+	// 			console.log('LOANS UPDATED')
+	// 			MonthTracker.findById(monthTrackerId)
+	// 				.then( monthTracker => {
+	// 					Account.findOne({owner: req.user._id})
+	// 						.then( account => {
+	// 							return account.updateOne({ loans: ((account.loans + monthTracker.monthly_loan_payments) - req.body.expense.amount) })
+	// 						})
+	// 						.catch(next)
+	// 					return monthTracker.updateOne({ monthly_loan_payments: req.body.expense.amount })
+	// 				})
+	// 				.catch(next)
+	// 		}
+	// 	})
+	// 	.then ( () => res.sendStatus(204))
+	// 	.catch(next)
 	Expense.findById(expenseId)
 		.then(handle404)
 		.then( (expense) => {
@@ -256,14 +294,19 @@ router.patch('/monthTrackers/:monthTrackerId/:expenseId', requireToken, removeBl
 			else if(expense.category === 'Loans')
 			{
 				console.log('LOANS UPDATED')
+				
 				MonthTracker.findById(monthTrackerId)
 					.then( monthTracker => {
 						Account.findOne({owner: req.user._id})
 							.then( account => {
-								return account.updateOne({ loans: ((account.loans + monthTracker.monthly_loan_payments) - req.body.expense.amount) })
+								console.log('ACCOUNT LOANS:', account.loans)
+								console.log('MONTHTRACKER LOAN PAYMENTS:', monthTracker.monthly_loan_payments)
+								console.log('EXPENSE.AMOUNT: ', expense.amount)
+								console.log('REQ.BODY.EXPENSE.AMOUNT: ', parseFloat(req.body.expense.amount))
+								return account.updateOne({ loans: (account.loans + monthTracker.monthly_loan_payments) - (monthTracker.monthly_loan_payments - expense.amount + parseFloat(req.body.expense.amount)) })
 							})
 							.catch(next)
-						return monthTracker.updateOne({ monthly_loan_payments: req.body.expense.amount })
+						return monthTracker.updateOne({ monthly_loan_payments: (monthTracker.monthly_loan_payments - expense.amount + parseFloat(req.body.expense.amount)) })
 					})
 					.catch(next)
 			}
@@ -347,7 +390,7 @@ router.delete('/monthTrackers/:monthTrackerId/:expenseId', requireToken, (req, r
 			}
 		})
 		.then( () => {
-			// This deletes the expense
+			// This deletes the expense document
 			Expense.findById(expenseId)
 				.then(handle404)
 				.then( (expense) => {
