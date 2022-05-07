@@ -17,7 +17,8 @@ const expenseSchema = new mongoose.Schema({
         required: true,
     },
     recurring: {
-        type: String
+        type: Boolean,
+        required: true
     },
     monthTracker: {
         type: mongoose.Schema.Types.ObjectId,

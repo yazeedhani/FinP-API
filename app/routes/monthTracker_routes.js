@@ -225,7 +225,7 @@ router.post('/monthTrackers/:monthTrackerId/expense', requireToken, (req, res, n
 				return expense
 			})
 		.then( expense => {
-			if( expense.recurring === 'on')
+			if(expense.recurring)
 			{
 				Account.findOne({owner: req.user._id})
 					.then( account => {
