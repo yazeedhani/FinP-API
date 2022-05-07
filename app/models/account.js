@@ -1,6 +1,7 @@
 const mongoose = require('mongoose')
 
 const User = require('./user')
+const Expense = require('./expense')
 
 const accountSchema = new mongoose.Schema({
     savings: {
@@ -19,6 +20,12 @@ const accountSchema = new mongoose.Schema({
         type: Number,
         required: true
     },
+    recurrences: [
+        {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Expense'
+        }
+    ],
     owner: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',

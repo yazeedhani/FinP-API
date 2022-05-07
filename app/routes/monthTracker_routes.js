@@ -181,7 +181,8 @@ router.get('/monthTrackers/:monthTrackerId/:expenseId', requireToken, (req, res,
 		.catch(next)
 })
 
-// CREATE -> POST /monthTrackers/:monthTrackerId/expenses - to add an expense to the expenses array in the current monthTracker
+// CREATE -> POST /monthTrackers/:monthTrackerId/expenses 
+// - to create a new expense add it to the expenses array in the current monthTracker document
 router.post('/monthTrackers/:monthTrackerId/expense', requireToken, (req, res, next) => {
 	const monthTrackerId = req.params.monthTrackerId
 	req.body.expense.owner = req.user._id
@@ -223,6 +224,18 @@ router.post('/monthTrackers/:monthTrackerId/expense', requireToken, (req, res, n
 				// return expense object after it is added to its monthTracker expenses array
 				return expense
 			})
+		.then( expense => {
+			if( expense.recurring === 'on')
+			{
+				Account.findOne({owner: req.user._id})
+					.then( account => {
+						account.recurrences.push(expense)
+						return account.save()
+					})
+					.catch(next)
+			}
+			return expense
+		})
 		.then( (expense) => res.status(201).json({ expense: expense.toObject() }) )
 		.catch(next)
 })
