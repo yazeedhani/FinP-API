@@ -18,6 +18,7 @@ router.get('/account/:userId', requireToken, (req, res, next) => {
     const loggedInUserId = req.params.userId
 
     Account.findOne({owner: loggedInUserId})
+        .populate('recurrences')
         .then(handle404)
         .then( account => {
             requireOwnership(req, account)
