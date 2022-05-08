@@ -252,6 +252,27 @@ router.patch('/monthTrackers/:monthTrackerId/:expenseId', requireToken, removeBl
 		.then(handle404)
 		.then( (expense) => {
 			requireOwnership(req, expense)
+			if(!expense.recurring)
+			{
+				console.log('EXPENSE RECURRING: ', expense.recurring)
+				Account.findOne({owner: req.user._id})
+					.then( account => {
+						account.recurrences.push(expense)
+						return account.save()
+					})
+					.catch(next)
+			}
+			else
+			{
+				Account.findOne({owner: req.user._id})
+					.then( account => {
+						const expenseIndex = account.recurrences.indexOf(expense._id)
+						account.recurrences.splice(expenseIndex, 1)
+						return account.save()
+					})
+					.catch(next)
+			}
+
 			if(expense.category === 'Savings')
 			{
 				console.log('SAVINGS UPDATED')
@@ -293,6 +314,19 @@ router.patch('/monthTrackers/:monthTrackerId/:expenseId', requireToken, removeBl
 			}
 			return expense.updateOne(req.body.expense)
 		})
+		// .then( (expense) => {
+		// 	console.log('EXPENSE: ', expense)
+		// 	if(expense.recurring)
+		// 	{
+		// 		Account.findOne({owner: req.user._id})
+		// 			.then( account => {
+		// 				account.recurrences.push(expense)
+		// 				return account.save()
+		// 			})
+		// 			.catch(next)
+		// 	}
+		// 	return expense
+		// })
 		.then ( () => res.sendStatus(204))
 		.catch(next)
 })
