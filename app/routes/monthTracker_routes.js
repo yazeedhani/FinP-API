@@ -83,12 +83,14 @@ router.post('/monthTrackers', requireToken, (req, res, next) => {
 	Account.findOne({owner: req.user._id})
 		.then( account => {
 			console.log('ACCOUNT:', account)
+
 			income = account.income
 			req.body.monthTracker.owner = req.user._id
 			req.body.monthTracker.year = parseInt(req.body.monthTracker.year)
 			req.body.monthTracker.annualTakeHome = income
 			req.body.monthTracker.monthlyTakeHome = parseFloat(income / 12)
 			req.body.monthTracker.budget = parseFloat(req.body.monthTracker.budget)
+			req.body.monthTracker.expenses = account.recurrences
 
 			MonthTracker.create(req.body.monthTracker)
 				// respond to succesful `create` with status 201 and JSON of new "monthTracker"
