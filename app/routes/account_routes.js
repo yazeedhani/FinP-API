@@ -61,6 +61,7 @@ router.delete('/account/:userId/:expenseId', requireToken, (req, res, next) => {
 
             return account.save()
         })
+        .then(() => res.sendStatus(204))
         .catch(next)
 })
 
