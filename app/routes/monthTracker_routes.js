@@ -252,13 +252,18 @@ router.patch('/monthTrackers/:monthTrackerId/:expenseId', requireToken, removeBl
 		.then(handle404)
 		.then( (expense) => {
 			requireOwnership(req, expense)
-			if(!expense.recurring)
+			console.log('EXPENSE RECURRING: ', expense.recurring)
+			console.log('RED.BODY.EXPENSE.RECURRING: ', req.body.expense.recurring)
+			// if(!expense.recurring || expense.recurring === true)
+			if(req.body.expense.recurring === true)
 			{
-				console.log('EXPENSE RECURRING: ', expense.recurring)
 				Account.findOne({owner: req.user._id})
 					.then( account => {
-						account.recurrences.push(expense)
-						return account.save()
+						if( !account.recurrences.includes(req.body.expense._id) )
+						{
+							account.recurrences.push(expense)
+							return account.save()
+						}
 					})
 					.catch(next)
 			}
