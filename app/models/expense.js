@@ -23,7 +23,7 @@ const expenseSchema = new mongoose.Schema({
     monthTracker: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'MonthTracker',
-        required: true,
+        // required: true,
     },
     owner: {
         type: mongoose.Schema.Types.ObjectId,

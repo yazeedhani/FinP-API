@@ -21,11 +21,14 @@ const accountSchema = new mongoose.Schema({
         required: true
     },
     recurrences: [
-        {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'Expense'
-        }
+       
     ],
+    // recurrences: [
+    //     {
+    //         type: mongoose.Schema.Types.ObjectId,
+    //         ref: 'Expense'
+    //     }
+    // ],
     owner: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',

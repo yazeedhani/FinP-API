@@ -80,6 +80,9 @@ router.post('/monthTrackers', requireToken, (req, res, next) => {
 	console.log('req.user:', req.user)
 	console.log('req.body.monthTracker:', req.body.monthTracker)
 	let income
+	let monthTrackerId
+	const monthTrackerRecurringExpenses = []
+	let updatedRecurrences
 	Account.findOne({owner: req.user._id})
 		.then( account => {
 			console.log('ACCOUNT:', account)
@@ -90,24 +93,166 @@ router.post('/monthTrackers', requireToken, (req, res, next) => {
 			req.body.monthTracker.annualTakeHome = income
 			req.body.monthTracker.monthlyTakeHome = parseFloat(income / 12)
 			req.body.monthTracker.budget = parseFloat(req.body.monthTracker.budget)
-			req.body.monthTracker.expenses = account.recurrences
+			// req.body.monthTracker.expenses = account.recurrences	
+			
+			
+			
+			// updatedRecurrences = account.recurrences.map( recurrence => {
+			// 	return recurrence.monthTracker = monthTrackerId
+			// })
 
-			MonthTracker.create(req.body.monthTracker)
-				// respond to succesful `create` with status 201 and JSON of new "monthTracker"
-				.then((monthTracker) => {
+			// console.log('UPDATED RECURRENCES: ', account.recurrences)
+			// First, create the monthTracker
+			const newMonthTracker = MonthTracker.create(req.body.monthTracker)
+				.then( monthTracker => {
+					console.log('NEW MONTHTRACKER: ', monthTracker)
+					monthTrackerId = monthTracker._id
+					console.log('MONTHTRACKER ID : ', monthTrackerId)
+					return monthTracker
+				})
+				.catch(next)
+
+			// Second, create the Expense documents using insertMany() from the account.recurrences
+			const recurringExpenses = Expense.insertMany(account.recurrences)
+				.then( expenses => {
+					console.log('NEW EXPENSES: ', expenses)
+					return expenses
+				})
+				.catch(next)
+			
+
+			// Third, use a Promise.all() to catch the promises above
+			Promise.all([recurringExpenses, newMonthTracker])
+				.then( responseData => {
+					console.log('RESPONSE DATA [0] - expenses: ', responseData[0])
+					console.log('RESPONSE DATA [1] - monthTracker: ', responseData[1])
+					const expenses = responseData[0]
+					const monthTracker = responseData[1]
+
+					// Fourth, then assign each expense the new monthTrackerId
+					for(let i = 0; i < expenses.length; i++)
+					{
+						console.log(`EXPENSES${[i]} : `, expenses[i])
+						expenses[i].monthTracker = monthTracker._id
+						// expenses[i].updateOne({ monthTracker: monthTracker._id})
+						expenses[i].save()
+					}
+
+					console.log('UPDATED EXPENSES: ', expenses)
+
+					return [expenses, monthTracker]
+				})
+				// Fifth, add the expenses with the new monthTracker's ID to its expenses array in monthTracker
+				.then( response => {
+					const expenses = response[0]
+					const monthTracker = response[1]
+					console.log('RESPONSE: ', response)
+					// console.log('monthTracker.updateOne({ expenses: expenses}) :', monthTracker.updateOne({ expenses: expenses}))
+					// return monthTracker.updateOne({ expenses: expenses})
+					monthTracker.expenses = expenses
+					return monthTracker.save()
+				})
+				.then( monthTracker => {
 					res.status(201).json({ monthTracker: monthTracker.toObject() })
 				})
+				.catch(next)
+
+			// MonthTracker.create(req.body.monthTracker)
+			// 	.then( monthTracker => {
+			// 		// First, add a monthTracker ID to each object in account.recurrences array
+			// 		// Second, create Expense documents using the expense objects in the account.recurrences array
+			// 		// When creating each Expense document, give each a monthTrackerID
+
+			// 		// First, loop through account.recurrences and assign each expense the current monthTrackerID
+			// 		// Second, 
+			// 		monthTrackerId = monthTracker._id
+			// 		// console.log('monthTracker: ', monthTrackerId)
+			// 		for(let i = 0; i < account.recurrences.length; i++)
+			// 		{	
+			// 			// console.log('ACCOUNT.RECURRENCES[i] : ', account.recurrences[i])
+			// 			// account.recurrences[i].monthTracker = monthTracker._id					
+			// 			Expense.create(account.recurrences[i])
+			// 				.then( recurringExpense => {
+			// 					// req.body.monthTracker.expenses = recurringExpenses
+			// 					recurringExpense.monthTracker = monthTracker._id
+								
+			// 					console.log('RECURRING EXPENSE: ', recurringExpense)
+			// 					// monthTracker.expenses.push(recurringExpense)
+			// 					// monthTracker.updateOne({ $push: { expenses : recurringExpense }})
+			// 					// console.log('MONTHTRACKER: ', monthTracker)
+			// 					return recurringExpense.save()
+			// 				})
+			// 				.then( recurringExpense => {
+			// 					console.log('PUSH EXPENSE')
+			// 					monthTrackerRecurringExpenses.push(recurringExpense)
+			// 					console.log('monthTrackerRecurringExpenses: ', monthTrackerRecurringExpenses)
+			// 				})
+			// 				// .then( (recurringExpense) => {
+			// 				// 	monthTracker.updateOne({ $push: { expenses : recurringExpense }})
+			// 				// 	return monthTracker.save()
+			// 				// })
+			// 				// monthTracker.save()
+			// 				.catch(next)
+			// 		}
+			// 		return monthTracker
+			// 	})
+			// 	.then( monthTracker => {
+			// 		MonthTracker.findById(monthTrackerId)
+			// 			.then( monthTracker => {
+			// 				console.log('MONTHTRACKER EXPENSES: ', monthTracker)
+			// 				monthTracker.expenses = [...monthTracker.expenses, ...monthTrackerRecurringExpenses]
+			// 				return monthTracker.save()
+			// 			})
+			// 			.then((monthTracker) => {
+			// 				res.status(201).json({ monthTracker: monthTracker.toObject() })
+			// 			})
+			// 			.catch(next)
+			// 	})
+
+
+				// .then( monthTracker => {
+				// 	MonthTracker.findById(monthTrackerId)
+				// 		.then( monthTracker => {
+				// 			console.log('MONTHTRACKER EXPENSES: ', monthTracker)
+				// 			monthTracker.expenses = [...monthTracker.expenses, ...monthTrackerRecurringExpenses]
+				// 			return monthTracker.save()
+				// 		})
+				// 		.then((monthTracker) => {
+				// 			res.status(201).json({ monthTracker: monthTracker.toObject() })
+				// 		})
+				// 		.catch(next)
+				// })
+				// .then( monthTracker => {
+				// 	MonthTracker.findByIdAndUpdate(monthTracker._id, monthTrackerRecurringExpenses)
+				// 		.then( monthTracker => {
+				// 			console.log('MONTHTRACKER UPDATED EXPENSES: ', monthTracker)
+				// 		})
+				// 		.catch(next)
+				// 	return monthTracker
+				// })
+				// respond to succesful `create` with status 201 and JSON of new "monthTracker"
+				// .then((monthTracker) => {
+				// 	res.status(201).json({ monthTracker: monthTracker.toObject() })
+				// })
 				// if an error occurs, pass it off to our error handler
 				// the error handler needs the error message and the `res` object so that it
 				// can send an error message back to the client
-				.catch(next)
+
+				
+				// .catch(next)
 				})
+
+			// MonthTracker.create(req.body.monthTracker)
+			// 	// respond to succesful `create` with status 201 and JSON of new "monthTracker"
+			// 	.then((monthTracker) => {
+			// 		res.status(201).json({ monthTracker: monthTracker.toObject() })
+			// 	})
+			// 	// if an error occurs, pass it off to our error handler
+			// 	// the error handler needs the error message and the `res` object so that it
+			// 	// can send an error message back to the client
+			// 	.catch(next)
+			// 	})
 		.catch(next)
-		
-	// console.log('INCOME: ', income)
-	// console.log('Annual Take Home: ', req.body.monthTracker.annualTakeHome)
-	// console.log('Monthly Take Home: ', req.body.monthTracker.monthlyTakeHome)
-	
 })
 
 // UPDATE -> PATCH /monthTrackers/5a7db6c74d55bc51bdf39793
@@ -191,6 +336,7 @@ router.post('/monthTrackers/:monthTrackerId/expense', requireToken, (req, res, n
 	req.body.expense.monthTracker = monthTrackerId
 	req.body.expense.amount = parseFloat(req.body.expense.amount)
 
+	console.log('REQ.BODY.EXPENSEL ', req.body.expense)
 	// Create the expense
 	Expense.create(req.body.expense)
 		.then( expense => {
@@ -231,13 +377,26 @@ router.post('/monthTrackers/:monthTrackerId/expense', requireToken, (req, res, n
 			{
 				Account.findOne({owner: req.user._id})
 					.then( account => {
-						account.recurrences.push(expense)
+						delete req.body.expense.monthTracker
+						account.recurrences.push(req.body.expense)
 						return account.save()
 					})
 					.catch(next)
 			}
 			return expense
 		})
+		// .then( expense => {
+		// 	if(expense.recurring)
+		// 	{
+		// 		Account.findOne({owner: req.user._id})
+		// 			.then( account => {
+		// 				account.recurrences.push(expense)
+		// 				return account.save()
+		// 			})
+		// 			.catch(next)
+		// 	}
+		// 	return expense
+		// })
 		.then( (expense) => res.status(201).json({ expense: expense.toObject() }) )
 		.catch(next)
 })

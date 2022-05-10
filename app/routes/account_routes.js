@@ -42,6 +42,8 @@ router.delete('/account/:userId/:expenseId', requireToken, (req, res, next) => {
     const loggedInUserId = req.params.userId
     const expenseId = req.params.expenseId
     
+    // Anytime you create a recurring expense assign it a custom field and random number
+
     Account.findOne({owner: loggedInUserId})
         // .populate('recurrences')
         .then( account => {
