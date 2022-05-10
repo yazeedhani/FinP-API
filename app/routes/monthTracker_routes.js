@@ -378,6 +378,7 @@ router.post('/monthTrackers/:monthTrackerId/expense', requireToken, (req, res, n
 				Account.findOne({owner: req.user._id})
 					.then( account => {
 						delete req.body.expense.monthTracker
+						req.body.expense.recurringId = Math.floor(Math.random() * 1000000).toString() + req.body.expense.name 
 						account.recurrences.push(req.body.expense)
 						return account.save()
 					})
@@ -416,28 +417,28 @@ router.patch('/monthTrackers/:monthTrackerId/:expenseId', requireToken, removeBl
 			console.log('EXPENSE RECURRING: ', expense.recurring)
 			console.log('RED.BODY.EXPENSE.RECURRING: ', req.body.expense.recurring)
 			// if(!expense.recurring || expense.recurring === true)
-			if(req.body.expense.recurring === true)
-			{
-				Account.findOne({owner: req.user._id})
-					.then( account => {
-						if( !account.recurrences.includes(req.body.expense._id) )
-						{
-							account.recurrences.push(expense)
-							return account.save()
-						}
-					})
-					.catch(next)
-			}
-			else
-			{
-				Account.findOne({owner: req.user._id})
-					.then( account => {
-						const expenseIndex = account.recurrences.indexOf(expense._id)
-						account.recurrences.splice(expenseIndex, 1)
-						return account.save()
-					})
-					.catch(next)
-			}
+			// if(req.body.expense.recurring === true)
+			// {
+			// 	Account.findOne({owner: req.user._id})
+			// 		.then( account => {
+			// 			if( !account.recurrences.includes(req.body.expense._id) )
+			// 			{
+			// 				account.recurrences.push(expense)
+			// 				return account.save()
+			// 			}
+			// 		})
+			// 		.catch(next)
+			// }
+			// else
+			// {
+			// 	Account.findOne({owner: req.user._id})
+			// 		.then( account => {
+			// 			const expenseIndex = account.recurrences.indexOf(expense._id)
+			// 			account.recurrences.splice(expenseIndex, 1)
+			// 			return account.save()
+			// 		})
+			// 		.catch(next)
+			// }
 
 			if(expense.category === 'Savings')
 			{

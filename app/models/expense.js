@@ -20,6 +20,9 @@ const expenseSchema = new mongoose.Schema({
         type: Boolean,
         required: true
     },
+    recurringId: {
+        type: String
+    },
     monthTracker: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'MonthTracker',

@@ -24,6 +24,7 @@ router.get('/account/:userId', requireToken, (req, res, next) => {
         .then(handle404)
         .then( account => {
             requireOwnership(req, account)
+            console.log('ACCOUNT: ', account)
             res.status(200).json({ account: account.toObject() })
         })
 })
@@ -38,28 +39,37 @@ router.patch('/account/:userId', requireToken, removeBlanks, (req, res, next) =>
 })
 
 // DESTROY -> DELETE /account/avklakt0909fa09f0a9ra09/ahdbgkeidnajka172839 - remove a recurring expense from recurrences array
-router.delete('/account/:userId/:expenseId', requireToken, (req, res, next) => {
+router.delete('/account/:userId/:recurringId', requireToken, (req, res, next) => {
     const loggedInUserId = req.params.userId
-    const expenseId = req.params.expenseId
+    const recurringId = req.params.recurringId
     
-    // Anytime you create a recurring expense assign it a custom field and random number
+    // Anytime you create a recurring expense assign it a custom field and random number - called it recurringID
 
     Account.findOne({owner: loggedInUserId})
         // .populate('recurrences')
         .then( account => {
             requireOwnership(req, account)
-            const expenseIndex = account.recurrences.indexOf(expenseId)
-            console.log('EXPENSE._ID:', expenseId)
+            let expenseIndex
+            // const expenseIndex = account.recurrences.indexOf(recurringId)
+            account.recurrences.forEach( (recurrence, index) => {
+                if(recurrence.recurringId === recurringId)
+                {
+                    expenseIndex = index
+                }
+            })
+            console.log('EXPENSE._ID:', recurringId)
             console.log('EXPENSE INDEX: ', expenseIndex)
-            console.log('account.recurrences.indexOf(expenseId): ', account.recurrences.indexOf(expenseId))
+            console.log('account.recurrences.indexOf(expenseId): ', account.recurrences.indexOf(recurringId))
             console.log('account.recurrences: ', account.recurrences)
             account.recurrences.splice(expenseIndex, 1)
 
-            Expense.findById(expenseId)
-                .then( expense => {
-                    return expense.updateOne({ recurring: false })
-                })
-                .catch(next)
+            delete account.recurrences[expenseIndex]
+
+            // Expense.findOne({recurringId: recurringId})
+            //     .then( expense => {
+            //         return expense.updateOne({ recurring: false })
+            //     })
+            //     .catch(next)
 
             return account.save()
         })
