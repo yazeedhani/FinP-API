@@ -280,14 +280,24 @@ router.patch('/monthTrackers/:id', requireToken, removeBlanks, (req, res, next) 
 })
 
 // DESTROY -> DELETE /monthTrackers/5a7db6c74d55bc51bdf39793 - deletes a monthTracker along with all of its expenses
+
+// Get the total of savings and loans for each monthTracker to be deleted
 router.delete('/monthTrackers/:monthTrackerId', requireToken, (req, res, next) => {
 	const owner = req.user._id
 	const monthTrackerId = req.params.monthTrackerId
+
 	MonthTracker.findById(monthTrackerId)
 		.then(handle404)
 		.then((monthTracker) => {
 			// throw an error if current user doesn't own `monthTracker`
 			requireOwnership(req, monthTracker)
+			// Adjust total savings and total loan repayments in user's account
+			Account.findOne({owner: owner})
+				.then( account => {
+					account.savings -= monthTracker.monthly_savings
+					account.loans += monthTracker.monthly_loan_payments
+					return account.save()
+				})
 			// delete the monthTracker ONLY IF the above didn't throw
 			monthTracker.deleteOne()
 		})
@@ -297,6 +307,23 @@ router.delete('/monthTrackers/:monthTrackerId', requireToken, (req, res, next) =
 		// if an error occurs, pass it to the handler
 		.catch(next)
 })
+// router.delete('/monthTrackers/:monthTrackerId', requireToken, (req, res, next) => {
+// 	const owner = req.user._id
+// 	const monthTrackerId = req.params.monthTrackerId
+// 	MonthTracker.findById(monthTrackerId)
+// 		.then(handle404)
+// 		.then((monthTracker) => {
+// 			// throw an error if current user doesn't own `monthTracker`
+// 			requireOwnership(req, monthTracker)
+// 			// delete the monthTracker ONLY IF the above didn't throw
+// 			monthTracker.deleteOne()
+// 		})
+// 		.then( () => Expense.deleteMany({monthTracker: monthTrackerId}))
+// 		// send back 204 and no content if the deletion succeeded
+// 		.then(() => res.sendStatus(204))
+// 		// if an error occurs, pass it to the handler
+// 		.catch(next)
+// })
 
 /******************* EXPENSES ***********************/
 
