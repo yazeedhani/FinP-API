@@ -63,7 +63,7 @@ router.delete('/account/:userId/:recurringId', requireToken, (req, res, next) =>
             console.log('account.recurrences: ', account.recurrences)
             account.recurrences.splice(expenseIndex, 1)
 
-            delete account.recurrences[expenseIndex]
+            // delete account.recurrences[expenseIndex]
 
             // Expense.findOne({recurringId: recurringId})
             //     .then( expense => {
