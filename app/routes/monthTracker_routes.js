@@ -487,12 +487,14 @@ router.patch('/monthTrackers/:monthTrackerId/:expenseId', requireToken, removeBl
 								console.log('MONTHTRACKER LOAN PAYMENTS:', monthTracker.monthly_loan_payments)
 								console.log('EXPENSE.AMOUNT: ', expense.amount)
 								console.log('REQ.BODY.EXPENSE.AMOUNT: ', parseFloat(req.body.expense.amount))
-								return account.updateOne({ loans: (account.loans + monthTracker.monthly_loan_payments) - (monthTracker.monthly_loan_payments - expense.amount + parseFloat(req.body.expense.amount)) })
+								// return account.updateOne({ loans: (account.loans + monthTracker.monthly_loan_payments) - (monthTracker.monthly_loan_payments - expense.amount + parseFloat(req.body.expense.amount)) })
+								return account.updateOne({ loans: (account.loans - parseFloat(req.body.expense.amount)) })
 							})
 							.catch(next)
 						
 							
-						return monthTracker.updateOne({ monthly_loan_payments: (monthTracker.monthly_loan_payments - expense.amount + parseFloat(req.body.expense.amount)) })
+						// return monthTracker.updateOne({ monthly_loan_payments: (monthTracker.monthly_loan_payments - expense.amount + parseFloat(req.body.expense.amount)) })
+						return monthTracker.updateOne({ monthly_loan_payments: (monthTracker.monthly_loan_payments + parseFloat(req.body.expense.amount)) })
 					})
 					.catch(next)
 			}
