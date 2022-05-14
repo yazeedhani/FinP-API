@@ -18,7 +18,8 @@ const expenseSchema = new mongoose.Schema({
     },
     recurring: {
         type: Boolean,
-        required: true
+        default: false
+        // required: true
     },
     recurringId: {
         type: String

@@ -42,8 +42,6 @@ router.patch('/account/:userId', requireToken, removeBlanks, (req, res, next) =>
 router.delete('/account/:userId/:recurringId', requireToken, (req, res, next) => {
     const loggedInUserId = req.params.userId
     const recurringId = req.params.recurringId
-    
-    // Anytime you create a recurring expense assign it a custom field and random number - called it recurringID
 
     Account.findOne({owner: loggedInUserId})
         // .populate('recurrences')

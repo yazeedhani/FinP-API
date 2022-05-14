@@ -373,6 +373,7 @@ router.post('/monthTrackers/:monthTrackerId/expense', requireToken, (req, res, n
 				Account.findOne({owner: req.user._id})
 					.then( account => {
 						delete req.body.expense.monthTracker
+						// Anytime you create a recurring expense assign it a custom field and random number - called it recurringID
 						req.body.expense.recurringId = Math.floor(Math.random() * 1000000).toString() + req.body.expense.name 
 						account.recurrences.push(req.body.expense)
 						return account.save()
@@ -398,7 +399,7 @@ router.post('/monthTrackers/:monthTrackerId/expense', requireToken, (req, res, n
 })
 
 // UPDATE/PATCH -> PATCH /monthTrackers/:monthTrackerID/:expenseId - to edit a single expense for a monthTracker
-// If expense is in the Savings category, then update the savings in the monthTracker and accounts documents to reflect the change
+// If expense is in the Savings or Loans category, then update the savings or loans in the monthTracker and accounts documents to reflect the change
 router.patch('/monthTrackers/:monthTrackerId/:expenseId', requireToken, removeBlanks, (req, res, next) => {
 	const monthTrackerId = req.params.monthTrackerId
 	const expenseId = req.params.expenseId
@@ -434,8 +435,10 @@ router.patch('/monthTrackers/:monthTrackerId/:expenseId', requireToken, removeBl
 			// 		})
 			// 		.catch(next)
 			// }
-
-			if(expense.category === 'Savings')
+			console.log('req.body.expense.category: ', req.body.expense.category === 'Savings')
+			console.log('expense.category: ', expense.category === 'Savings')
+			console.log(req.body.expense.category === 'Savings' || expense.category === 'Savings')
+			if(req.body.expense.category === 'Savings' || expense.category === 'Savings')
 			{
 				console.log('SAVINGS UPDATED')
 				console.log('EXPENSE.AMOUNT: ', expense.amount)
@@ -448,14 +451,31 @@ router.patch('/monthTrackers/:monthTrackerId/:expenseId', requireToken, removeBl
 							.then( account => {
 									console.log('ACCOUNT:', account)
 									console.log('ACCOUNT SAVINGS:', account.savings)
-									return account.updateOne({ savings: (account.savings - monthTracker.monthly_savings) + (monthTracker.monthly_savings - expense.amount + updatedSavingsExpense) })
+									// if(monthTracker.monthly_savings === 0)
+									// {
+									// 	return account.updateOne({ savings: (account.savings + updatedSavingsExpense) })
+									// }
+									// else
+									// {
+									// 	return account.updateOne({ savings: (account.savings - monthTracker.monthly_savings) + (monthTracker.monthly_savings - expense.amount + updatedSavingsExpense) })
+									// }
+									return account.updateOne({ savings: (account.savings + updatedSavingsExpense) })
 								})
 							.catch(next)
-						return monthTracker.updateOne({ monthly_savings: monthTracker.monthly_savings - expense.amount + updatedSavingsExpense })
+
+						// if(monthTracker.monthly_savings === 0)
+						// {
+						// 	return monthTracker.updateOne({ monthly_savings: updatedSavingsExpense })
+						// }
+						// else
+						// {
+						// 	return monthTracker.updateOne({ monthly_savings: monthTracker.monthly_savings - expense.amount + updatedSavingsExpense })
+						// }
+						return monthTracker.updateOne({ monthly_savings: monthTracker.monthly_savings + updatedSavingsExpense })
 					})
 					.catch(next)
 			}
-			else if(expense.category === 'Loans')
+			else if(expense.category === 'Loans' || req.body.expense.category === 'Loans')
 			{
 				console.log('LOANS UPDATED')
 				
@@ -470,10 +490,13 @@ router.patch('/monthTrackers/:monthTrackerId/:expenseId', requireToken, removeBl
 								return account.updateOne({ loans: (account.loans + monthTracker.monthly_loan_payments) - (monthTracker.monthly_loan_payments - expense.amount + parseFloat(req.body.expense.amount)) })
 							})
 							.catch(next)
+						
+							
 						return monthTracker.updateOne({ monthly_loan_payments: (monthTracker.monthly_loan_payments - expense.amount + parseFloat(req.body.expense.amount)) })
 					})
 					.catch(next)
 			}
+			// Update the expense
 			return expense.updateOne(req.body.expense)
 		})
 		// .then( (expense) => {
