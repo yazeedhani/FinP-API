@@ -487,10 +487,10 @@ router.patch('/monthTrackers/:monthTrackerId/:expenseId', requireToken, removeBl
 					.then( monthTracker => {
 						Account.findOne({owner: req.user._id})
 							.then( account => {
-								return account.updateOne({ loans: account.loans + parseFloat(req.body.expense.amount)})
+								return account.updateOne({ loans: account.loans - parseFloat(req.body.expense.amount)})
 							})
 							.catch(next)
-						return monthTracker.updateOne({monthly_loan_payments: monthTracker.monthly_loan_payments - parseFloat(req.body.expense.amount)}) 
+						return monthTracker.updateOne({monthly_loan_payments: monthTracker.monthly_loan_payments + parseFloat(req.body.expense.amount)}) 
 					})
 			}
 			// To edit an expense with the current category Savings
