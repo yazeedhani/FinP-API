@@ -442,8 +442,9 @@ router.patch('/monthTrackers/:monthTrackerId/:expenseId', requireToken, removeBl
 			console.log(req.body.expense.category === 'Savings' || expense.category === 'Savings')
 
 			// To edit an expense that is changing its category from Savings to another category, except Loans
-			if(expense.category === 'Savings' && req.body.expense.category !== 'Savings')
+			if(expense.category === 'Savings' && req.body.expense.category !== 'Savings' && req.body.expense.category !== 'Loans')
 			{
+				console.log('ONE')
 				MonthTracker.findById(monthTrackerId)
 					.then( monthTracker => {
 						Account.findOne({owner: req.user._id})
@@ -455,8 +456,9 @@ router.patch('/monthTrackers/:monthTrackerId/:expenseId', requireToken, removeBl
 					})
 			}
 			// To edit an expense that is changing its category from Loans to another category, except Savings
-			else if(expense.category === 'Loans' && req.body.expense.category !== 'Loans')
+			else if(expense.category === 'Loans' && req.body.expense.category !== 'Loans' && req.body.expense.category !== 'Savings')
 			{
+				console.log('TWO')
 				MonthTracker.findById(monthTrackerId)
 					.then( monthTracker => {
 						Account.findOne({owner: req.user._id})
@@ -468,8 +470,9 @@ router.patch('/monthTrackers/:monthTrackerId/:expenseId', requireToken, removeBl
 					})
 			}
 			// To edit an expense that is changing its category to Savings, (The previos category cannot be Loans)
-			else if(expense.category !== 'Savings' && req.body.expense.category === 'Savings')
+			else if(expense.category !== 'Savings' && req.body.expense.category === 'Savings' && expense.category !== 'Loans')
 			{
+				console.log('THREE')
 				MonthTracker.findById(monthTrackerId)
 					.then( monthTracker => {
 						Account.findOne({owner: req.user._id})
@@ -481,8 +484,9 @@ router.patch('/monthTrackers/:monthTrackerId/:expenseId', requireToken, removeBl
 					})
 			}
 			// To edit an expense that is changing its category to Loans, (The previos category cannot be Savings)
-			else if(expense.category !== 'Loans' && req.body.expense.category === 'Loans')
+			else if(expense.category !== 'Loans' && req.body.expense.category === 'Loans' && expense.category !== 'Savings')
 			{
+				console.log('FOUR')
 				MonthTracker.findById(monthTrackerId)
 					.then( monthTracker => {
 						Account.findOne({owner: req.user._id})
@@ -491,6 +495,28 @@ router.patch('/monthTrackers/:monthTrackerId/:expenseId', requireToken, removeBl
 							})
 							.catch(next)
 						return monthTracker.updateOne({monthly_loan_payments: monthTracker.monthly_loan_payments + parseFloat(req.body.expense.amount)}) 
+					})
+			}
+			// To edit an expense that is chaning its category from Savings to Loans
+			else if(expense.category === 'Savings' && req.body.expense.category === 'Loans')
+			{
+				console.log('SAVINGS TO LOANS')
+				MonthTracker.findById(monthTrackerId)
+					.then( monthTracker => {
+						Account.findOne({owner: req.user._id})
+							.then( account => {
+								// account.updateOne({ loans: account.loans - parseFloat(req.body.expense.amount)})
+								// account.updateOne({savings: account.savings - parseFloat(expense.amount)})
+								account.loans -= parseFloat(req.body.expense.amount)
+								account.savings -= parseFloat(expense.amount)
+								return account.save()
+								// return account.updateOne({ loans: account.loans - parseFloat(req.body.expense.amount)}, {savings: account.savings - parseFloat(expense.amount)})
+							})
+							.catch(next)
+						monthTracker.monthly_loan_payments += parseFloat(req.body.expense.amount)
+						monthTracker.monthly_savings -= parseFloat(expense.amount)
+						return monthTracker.save()
+						// return monthTracker.updateOne({monthly_loan_payments: monthTracker.monthly_loan_payments + parseFloat(req.body.expense.amount)}, {monthly_savings: monthTracker.monthly_savings - parseFloat(expense.amount)}) 
 					})
 			}
 			// To edit an expense with the current category Savings
