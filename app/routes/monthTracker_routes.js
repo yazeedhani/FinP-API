@@ -255,7 +255,7 @@ router.patch('/monthTrackers/:id', requireToken, removeBlanks, (req, res, next) 
 })
 
 // DESTROY -> DELETE /monthTrackers/5a7db6c74d55bc51bdf39793 - deletes a monthTracker along with all of its expenses
-
+// MonthTracker will also be removed from monthTrackers array in account document
 // Get the total of savings and loans for each monthTracker to be deleted
 router.delete('/monthTrackers/:monthTrackerId', requireToken, (req, res, next) => {
 	const owner = req.user._id
@@ -280,6 +280,13 @@ router.delete('/monthTrackers/:monthTrackerId', requireToken, (req, res, next) =
 		// send back 204 and no content if the deletion succeeded
 		.then(() => res.sendStatus(204))
 		// if an error occurs, pass it to the handler
+		.catch(next)
+
+	Account.findOne({owner: owner})
+		.then( account => {
+			account.monthTrackers.splice(monthTrackerId, 1)
+			account.save()
+		})
 		.catch(next)
 })
 // router.delete('/monthTrackers/:monthTrackerId', requireToken, (req, res, next) => {
