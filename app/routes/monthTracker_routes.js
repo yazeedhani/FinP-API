@@ -271,6 +271,7 @@ router.delete('/monthTrackers/:monthTrackerId', requireToken, (req, res, next) =
 				.then( account => {
 					account.savings -= monthTracker.monthly_savings
 					account.loans += monthTracker.monthly_loan_payments
+					account.monthTrackers.splice(monthTrackerId, 1)
 					return account.save()
 				})
 			// delete the monthTracker ONLY IF the above didn't throw
@@ -280,13 +281,6 @@ router.delete('/monthTrackers/:monthTrackerId', requireToken, (req, res, next) =
 		// send back 204 and no content if the deletion succeeded
 		.then(() => res.sendStatus(204))
 		// if an error occurs, pass it to the handler
-		.catch(next)
-
-	Account.findOne({owner: owner})
-		.then( account => {
-			account.monthTrackers.splice(monthTrackerId, 1)
-			account.save()
-		})
 		.catch(next)
 })
 // router.delete('/monthTrackers/:monthTrackerId', requireToken, (req, res, next) => {
