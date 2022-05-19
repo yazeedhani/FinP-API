@@ -69,6 +69,9 @@ router.get('/monthTrackers/:id', requireToken, (req, res, next) => {
 		.then((monthTracker) => {
 			requireOwnership(req, monthTracker)
 			console.log('MONTHTRACKERRRRRR: ', monthTracker)
+			// To re-calculate monthly_cashlow if an expense is created, updated, or deleted
+			monthTracker.monthly_cashflow = monthTracker.monthlyTakeHome - monthTracker.totalExpenses
+			monthTracker.save()
 			// console.log('TOtal expenses', monthTracker.totalExpenses)
 			res.status(200).json({ monthTracker: monthTracker.toObject() })
 		})
@@ -339,7 +342,9 @@ router.post('/monthTrackers/:monthTrackerId/expense', requireToken, (req, res, n
 				// requireOwnership(req, expense)
 				// Add the new expense to the expenses array in the current monthTracker
 				MonthTracker.findById(monthTrackerId)
+					.populate('expenses')
 					.then( monthTracker => {
+						console.log('MONTRACKER IN CREATE ROUTE: ', monthTracker)
 						monthTracker.expenses.push(expense)
 						if(expense.category === 'Savings')
 						{
@@ -361,6 +366,7 @@ router.post('/monthTrackers/:monthTrackerId/expense', requireToken, (req, res, n
 								})
 								.catch(next)
 						}
+						monthTracker.monthly_cashflow = parseFloat(monthTracker.monthlyTakeHome) - parseFloat(monthTracker.totalExpenses)
 						monthTracker.save()
 						return expense
 					})

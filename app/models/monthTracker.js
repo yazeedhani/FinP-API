@@ -74,7 +74,7 @@ monthTrackerSchema.virtual('totalExpenses').get(function() {
 
 // Calculate monthly cashlow
 monthTrackerSchema.virtual('monthlyCashflow').get(function() {
-
+	
 	return this.monthlyTakeHome - this.totalExpenses
 })
 
