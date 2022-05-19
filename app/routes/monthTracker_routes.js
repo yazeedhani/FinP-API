@@ -68,6 +68,7 @@ router.get('/monthTrackers/:id', requireToken, (req, res, next) => {
 		// if `findById` is succesful, respond with 200 and "monthTracker" JSON
 		.then((monthTracker) => {
 			requireOwnership(req, monthTracker)
+			console.log('MONTHTRACKERRRRRR: ', monthTracker)
 			// console.log('TOtal expenses', monthTracker.totalExpenses)
 			res.status(200).json({ monthTracker: monthTracker.toObject() })
 		})

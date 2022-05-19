@@ -59,4 +59,15 @@ monthTrackerSchema.virtual('monthTrackerTitle').get(function() {
 	return `${this.month} ${this.year}`
 })
 
+monthTrackerSchema.virtual('totalExpenses').get(function() {
+	let total = 0
+
+	for(let i = 0; i < this.expenses.length; i++)
+	{
+		total += this.expenses[i].amount
+	}
+
+	return total
+})
+
 module.exports = mongoose.model('MonthTracker', monthTrackerSchema)
