@@ -106,6 +106,9 @@ router.post('/monthTrackers', requireToken, (req, res, next) => {
 					console.log('NEW MONTHTRACKER: ', monthTracker)
 					monthTrackerId = monthTracker._id
 					console.log('MONTHTRACKER ID : ', monthTrackerId)
+					// Add new monthTracker to account array monthTrackers
+					account.monthTrackers.push(monthTracker._id)
+					// account.save()
 					return monthTracker
 				})
 				.catch(next)
