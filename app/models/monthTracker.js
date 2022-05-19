@@ -55,10 +55,12 @@ const monthTrackerSchema = new mongoose.Schema(
 	}
 )
 
+// Get title of monthtracker (Month Year)
 monthTrackerSchema.virtual('monthTrackerTitle').get(function() {
 	return `${this.month} ${this.year}`
 })
 
+// Calculate total expenses for monthTracker
 monthTrackerSchema.virtual('totalExpenses').get(function() {
 	let total = 0
 
@@ -68,6 +70,12 @@ monthTrackerSchema.virtual('totalExpenses').get(function() {
 	}
 
 	return total
+})
+
+// Calculate monthly cashlow
+monthTrackerSchema.virtual('monthlyCashflow').get(function() {
+
+	return this.monthlyTakeHome - this.totalExpenses
 })
 
 module.exports = mongoose.model('MonthTracker', monthTrackerSchema)
