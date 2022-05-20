@@ -282,7 +282,26 @@ router.delete('/monthTrackers/:monthTrackerId', requireToken, (req, res, next) =
 			// delete the monthTracker ONLY IF the above didn't throw
 			monthTracker.deleteOne()
 		})
+		// Delete all expenses for the monthTracker
 		.then( () => Expense.deleteMany({monthTracker: monthTrackerId}))
+		// Adjust total cashflow in account document
+		.then( () => {
+			Account.findOne({owner: req.user._id})
+				.populate('monthTrackers')
+				.then( account => {
+					let totalCashflow = 0
+
+					for(let i = 0; i < account.monthTrackers.length; i++)
+					{
+						console.log('monthTracker[i]', account.monthTrackers[i])
+						totalCashflow += account.monthTrackers[i].monthly_cashflow
+						console.log('totalcashflow: ', totalCashflow)
+					}
+					account.cashflow = totalCashflow
+					account.save()
+				})
+				.catch(next)
+		})
 		// send back 204 and no content if the deletion succeeded
 		.then(() => res.sendStatus(204))
 		// if an error occurs, pass it to the handler
