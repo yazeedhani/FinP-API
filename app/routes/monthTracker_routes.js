@@ -91,6 +91,26 @@ router.get('/monthTrackers/:id', requireToken, (req, res, next) => {
 			// console.log('TOtal expenses', monthTracker.totalExpenses)
 			res.status(200).json({ monthTracker: monthTracker.toObject() })
 		})
+		// Adjust total cashflow in account document when an new expense is created, updated, or deleted
+		// This is placed here because you are redirected to the monthTracker show page after you create, update, or delete an expense
+		.then( expense => {
+			Account.findOne({owner: req.user._id})
+				.populate('monthTrackers')
+				.then( account => {
+					let totalCashflow = 0
+
+					for(let i = 0; i < account.monthTrackers.length; i++)
+					{
+						console.log('monthTracker[i].monthly_cashflow', account.monthTrackers[i].monthly_cashflow)
+						totalCashflow += account.monthTrackers[i].monthly_cashflow
+						console.log('totalcashflow: ', totalCashflow)
+					}
+					account.cashflow = totalCashflow
+					account.save()
+				})
+				.catch(next)
+			return expense
+		})
 		// if an error occurs, pass it to the handler
 		.catch(next)
 })
