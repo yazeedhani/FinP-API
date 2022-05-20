@@ -32,6 +32,24 @@ const requireToken = passport.authenticate('bearer', { session: false })
 // instantiate a router (mini app that only handles routes)
 const router = express.Router()
 
+
+// Adjust total cashflow for account document	
+const adjustAccountTotalCashflow = (userId, next) => {
+	Account.findOne({owner: userId})
+		.populate('monthTrackers')
+		.then( account => {
+			let totalCashflow = 0
+
+			for(let i = 0; i < account.monthTrackers.length; i++)
+			{
+				totalCashflow += account.monthTrackers[i].monthly_cashflow
+			}
+			account.cashflow = totalCashflow
+            account.save()
+		})
+		.catch(next)
+}
+
 /******************* MONTHTRACKER ***********************/
 
 // INDEX -> GET /monthTrackers - get monthTrackers only for the logged in user
@@ -69,29 +87,12 @@ router.get('/monthTrackers/:id', requireToken, (req, res, next) => {
 		.then((monthTracker) => {
 			requireOwnership(req, monthTracker)
 			console.log('MONTHTRACKERRRRRR: ', monthTracker)
-			// To re-calculate monthly_cashlow if an expense is created, updated, or deleted
-			// monthTracker.monthly_cashflow = monthTracker.monthlyTakeHome - monthTracker.totalExpenses
 			monthTracker.save()
 			// console.log('TOtal expenses', monthTracker.totalExpenses)
 			res.status(200).json({ monthTracker: monthTracker.toObject() })
 		})
 		// if an error occurs, pass it to the handler
 		.catch(next)
-	
-	// Adjust total cashflow for account document	
-	// Account.findOne({owner: req.user._id})
-	// 	.populate('monthTrackers')
-	// 	.then( account => {
-	// 		let totalCashflow = 0
-
-	// 		for(let i = 0; i < account.monthTrackers.length; i++)
-	// 		{
-	// 			totalCashflow += account.monthTrackers[i].monthly_cashflow
-	// 		}
-	// 		account.cashflow = totalCashflow
-    //         account.save()
-	// 	})
-	// 	.catch(next)
 })
 
 // CREATE -> POST /monthTrackers
@@ -125,7 +126,7 @@ router.post('/monthTrackers', requireToken, (req, res, next) => {
 					console.log('MONTHTRACKER ID : ', monthTrackerId)
 					// Add new monthTracker to account array monthTrackers
 					account.monthTrackers.push(monthTracker._id)
-					// account.save()
+					
 					return monthTracker
 				})
 				.catch(next)
@@ -206,6 +207,25 @@ router.post('/monthTrackers', requireToken, (req, res, next) => {
 
 					monthTracker.expenses = expenses
 					return monthTracker.save()
+				})
+				// Sixth, adjust total cashflow in account document
+				.then( monthTracker => {
+					Account.findOne({owner: req.user._id})
+						.populate('monthTrackers')
+						.then( account => {
+							let totalCashflow = 0
+
+							for(let i = 0; i < account.monthTrackers.length; i++)
+							{
+								console.log('monthTracker[i]', account.monthTrackers[i])
+								totalCashflow += account.monthTrackers[i].monthly_cashflow
+								console.log('totalcashflow: ', totalCashflow)
+							}
+							account.cashflow = totalCashflow
+							account.save()
+						})
+						.catch(next)
+					return monthTracker
 				})
 				.then( monthTracker => {
 					res.status(201).json({ monthTracker: monthTracker.toObject() })
@@ -368,6 +388,7 @@ router.post('/monthTrackers/:monthTrackerId/expense', requireToken, (req, res, n
 
 // UPDATE/PATCH -> PATCH /monthTrackers/:monthTrackerID/:expenseId - to edit a single expense for a monthTracker
 // If expense is in the Savings or Loans category, then update the savings or loans in the monthTracker and accounts documents to reflect the change
+// Monthly cashflow will be adjusted
 router.patch('/monthTrackers/:monthTrackerId/:expenseId', requireToken, removeBlanks, (req, res, next) => {
 	const monthTrackerId = req.params.monthTrackerId
 	const expenseId = req.params.expenseId
@@ -586,6 +607,7 @@ router.patch('/monthTrackers/:monthTrackerId/:expenseId', requireToken, removeBl
 
 // DESTROY -> DELETE /monthTrackers/:monthTrackerID/:expenseId - to delete a single expense for a monthTracker
 // The expense must be removed from the expenses array in MonthTracker and delete the expense document
+// Monthly cashflow will be adjusted
 router.delete('/monthTrackers/:monthTrackerId/:expenseId', requireToken, (req, res, next) => {
 	const monthTrackerId = req.params.monthTrackerId
 	const expenseId = req.params.expenseId
