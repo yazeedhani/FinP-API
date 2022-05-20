@@ -251,7 +251,26 @@ router.patch('/monthTrackers/:id', requireToken, removeBlanks, (req, res, next) 
 			console.log('req.body.monthtracker: ', req.body.monthTracker)
 			console.log('Month Tracker: ', monthTracker)
 			// pass the result of Mongoose's `.update` to the next `.then`
+			req.body.monthTracker.monthly_cashflow = req.body.monthTracker.monthlyTakeHome
 			return monthTracker.updateOne(req.body.monthTracker)
+		})
+		// Adjust total cashflow in account document
+		.then( () => {
+			Account.findOne({owner: req.user._id})
+				.populate('monthTrackers')
+				.then( account => {
+					let totalCashflow = 0
+
+					for(let i = 0; i < account.monthTrackers.length; i++)
+					{
+						console.log('monthTracker[i]', account.monthTrackers[i])
+						totalCashflow += account.monthTrackers[i].monthly_cashflow
+						console.log('totalcashflow: ', totalCashflow)
+					}
+					account.cashflow = totalCashflow
+					account.save()
+				})
+				.catch(next)
 		})
 		// if that succeeded, return 204 and no JSON
 		.then(() => res.sendStatus(204))
@@ -261,6 +280,7 @@ router.patch('/monthTrackers/:id', requireToken, removeBlanks, (req, res, next) 
 
 // DESTROY -> DELETE /monthTrackers/5a7db6c74d55bc51bdf39793 - deletes a monthTracker along with all of its expenses
 // MonthTracker will also be removed from monthTrackers array in account document
+// Adjust total cashflow in account document
 // Get the total of savings and loans for each monthTracker to be deleted
 router.delete('/monthTrackers/:monthTrackerId', requireToken, (req, res, next) => {
 	const owner = req.user._id
