@@ -653,9 +653,14 @@ router.delete('/monthTrackers/:monthTrackerId/:expenseId', requireToken, (req, r
 						expenses.splice(index, 1)
 						return monthTracker.save()
 					}
-					
 				}
 			}
+			return monthTracker
+		})
+		// Adjust monthly_cashflow when expense is deleted
+		.then( monthTracker => {
+			monthTracker.monthly_cashflow = parseFloat(monthTracker.monthlyTakeHome) - parseFloat(monthTracker.totalExpenses)
+			return monthTracker.save()
 		})
 		.then( () => {
 			// This deletes the expense document
