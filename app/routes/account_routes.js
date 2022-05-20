@@ -21,6 +21,7 @@ router.get('/account/:userId', requireToken, (req, res, next) => {
 
     Account.findOne({owner: loggedInUserId})
         .populate('recurrences')
+        .populate('monthTrackers')
         .then(handle404)
         .then( account => {
             requireOwnership(req, account)

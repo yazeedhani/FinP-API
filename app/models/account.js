@@ -35,4 +35,16 @@ const accountSchema = new mongoose.Schema({
     }
 })
 
+// Calculate total expenses for monthTracker
+accountSchema.virtual('totalCashflow').get(function() {
+    let total = 0
+
+	for(let i = 0; i < this.monthTrackers.length; i++)
+	{
+		total += this.monthTrackers[i].monthly_cashflow
+	}
+
+    return total
+})
+
 module.exports = mongoose.model('Account', accountSchema)

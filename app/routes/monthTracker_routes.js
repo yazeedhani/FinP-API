@@ -70,13 +70,28 @@ router.get('/monthTrackers/:id', requireToken, (req, res, next) => {
 			requireOwnership(req, monthTracker)
 			console.log('MONTHTRACKERRRRRR: ', monthTracker)
 			// To re-calculate monthly_cashlow if an expense is created, updated, or deleted
-			monthTracker.monthly_cashflow = monthTracker.monthlyTakeHome - monthTracker.totalExpenses
+			// monthTracker.monthly_cashflow = monthTracker.monthlyTakeHome - monthTracker.totalExpenses
 			monthTracker.save()
 			// console.log('TOtal expenses', monthTracker.totalExpenses)
 			res.status(200).json({ monthTracker: monthTracker.toObject() })
 		})
 		// if an error occurs, pass it to the handler
 		.catch(next)
+	
+	// Adjust total cashflow for account document	
+	// Account.findOne({owner: req.user._id})
+	// 	.populate('monthTrackers')
+	// 	.then( account => {
+	// 		let totalCashflow = 0
+
+	// 		for(let i = 0; i < account.monthTrackers.length; i++)
+	// 		{
+	// 			totalCashflow += account.monthTrackers[i].monthly_cashflow
+	// 		}
+	// 		account.cashflow = totalCashflow
+    //         account.save()
+	// 	})
+	// 	.catch(next)
 })
 
 // CREATE -> POST /monthTrackers
@@ -88,6 +103,7 @@ router.post('/monthTrackers', requireToken, (req, res, next) => {
 	let monthTrackerId
 
 	Account.findOne({owner: req.user._id})
+		.populate('monthTrackers')
 		.then( account => {
 			console.log('ACCOUNT:', account)
 
@@ -97,6 +113,7 @@ router.post('/monthTrackers', requireToken, (req, res, next) => {
 			req.body.monthTracker.annualTakeHome = income
 			req.body.monthTracker.monthlyTakeHome = parseFloat(income / 12)
 			req.body.monthTracker.budget = parseFloat(req.body.monthTracker.budget)
+			req.body.monthTracker.monthly_cashflow = req.body.monthTracker.monthlyTakeHome
 			// req.body.monthTracker.expenses = account.recurrences	
 
 			// console.log('UPDATED RECURRENCES: ', account.recurrences)
@@ -119,33 +136,7 @@ router.post('/monthTrackers', requireToken, (req, res, next) => {
 					console.log('NEW EXPENSES: ', expenses)
 					return expenses
 				})
-				// .then( expenses => {
-				// 	// console.log('MONTHTRACKER ID : ', monthTrackerId)
-				// 	MonthTracker.findOne({ _id: monthTrackerId })
-				// 		.then( monthTracker => {
-				// 			console.log('Queried MONTHTRACKER: ', monthTracker)
-				// 			for(let i = 0; i < expenses.length; i++)
-				// 			{
-				// 				if( expense.category === 'Loans' )
-				// 				{
-				// 					monthTracker.monthly_loan_payments += expense.amount
-				// 					monthTracker.save()
-				// 				}
-				// 				else if( expense.category === 'Savings' )
-				// 				{
-				// 					monthTracker.monthly_savings += expense.amount
-				// 					monthTracker.save()
-				// 				}
-								
-				// 			}
-				// 			console.log('UPDATED MONTHTRACKER: ', monthTracker)
-				// 			return monthTracker
-				// 		})
-				// 		.catch(next)
-				// 	return expenses
-				// })
 				.catch(next)
-			
 
 			// Third, use a Promise.all() to catch the promises above
 			Promise.all([recurringExpenses, newMonthTracker])
@@ -165,10 +156,8 @@ router.post('/monthTrackers', requireToken, (req, res, next) => {
 						expenses[i].save()
 					}
 
-					console.log('UPDATED EXPENSES: ', expenses)
-
-					// Increment loan payments and savings amounts for the month
 					MonthTracker.findOne({ _id: monthTrackerId })
+						// Increment loan payments and savings amounts for the month
 						.then( monthTracker => {
 							console.log('Queried MONTHTRACKER: ', monthTracker)
 							for(let i = 0; i < expenses.length; i++)
@@ -177,12 +166,10 @@ router.post('/monthTrackers', requireToken, (req, res, next) => {
 								{
 									monthTracker.monthly_loan_payments += expenses[i].amount
 									// account.loans += expenses[i].amount
-									// monthTracker.save()
 								}
 								else if( expenses[i].category === 'Savings' )
 								{
 									monthTracker.monthly_savings += expenses[i].amount
-									// monthTracker.save()
 								}
 								
 							}
@@ -190,6 +177,7 @@ router.post('/monthTrackers', requireToken, (req, res, next) => {
 							console.log('UPDATED MONTHTRACKER: ', monthTracker)
 							return monthTracker
 						})
+						// Adjust total loans payments and savings for the account document
 						.then( monthTracker => {
 							for(let i = 0; i < expenses.length; i++)
 							{
@@ -197,13 +185,11 @@ router.post('/monthTrackers', requireToken, (req, res, next) => {
 								{
 									// monthTracker.monthly_loan_payments += expenses[i].amount
 									account.loans -= expenses[i].amount
-									// account.save()
 								}
 								else if( expenses[i].category === 'Savings' )
 								{
 									// monthTracker.monthly_savings += expenses[i].amount
 									account.savings += expenses[i].amount
-									// account.save()
 								}
 							}
 							account.save()
@@ -217,8 +203,7 @@ router.post('/monthTrackers', requireToken, (req, res, next) => {
 					const expenses = response[0]
 					const monthTracker = response[1]
 					console.log('RESPONSE: ', response)
-					// console.log('monthTracker.updateOne({ expenses: expenses}) :', monthTracker.updateOne({ expenses: expenses}))
-					// return monthTracker.updateOne({ expenses: expenses})
+
 					monthTracker.expenses = expenses
 					return monthTracker.save()
 				})
@@ -271,7 +256,7 @@ router.delete('/monthTrackers/:monthTrackerId', requireToken, (req, res, next) =
 				.then( account => {
 					account.savings -= monthTracker.monthly_savings
 					account.loans += monthTracker.monthly_loan_payments
-					account.monthTrackers.splice(monthTrackerId, 1)
+					account.monthTrackers.splice(account.monthTrackers.indexOf(monthTrackerId), 1)
 					return account.save()
 				})
 			// delete the monthTracker ONLY IF the above didn't throw
@@ -283,23 +268,6 @@ router.delete('/monthTrackers/:monthTrackerId', requireToken, (req, res, next) =
 		// if an error occurs, pass it to the handler
 		.catch(next)
 })
-// router.delete('/monthTrackers/:monthTrackerId', requireToken, (req, res, next) => {
-// 	const owner = req.user._id
-// 	const monthTrackerId = req.params.monthTrackerId
-// 	MonthTracker.findById(monthTrackerId)
-// 		.then(handle404)
-// 		.then((monthTracker) => {
-// 			// throw an error if current user doesn't own `monthTracker`
-// 			requireOwnership(req, monthTracker)
-// 			// delete the monthTracker ONLY IF the above didn't throw
-// 			monthTracker.deleteOne()
-// 		})
-// 		.then( () => Expense.deleteMany({monthTracker: monthTrackerId}))
-// 		// send back 204 and no content if the deletion succeeded
-// 		.then(() => res.sendStatus(204))
-// 		// if an error occurs, pass it to the handler
-// 		.catch(next)
-// })
 
 /******************* EXPENSES ***********************/
 
@@ -370,6 +338,7 @@ router.post('/monthTrackers/:monthTrackerId/expense', requireToken, (req, res, n
 								})
 								.catch(next)
 						}
+						// Adjust monthly cashflow
 						monthTracker.monthly_cashflow = parseFloat(monthTracker.monthlyTakeHome) - parseFloat(monthTracker.totalExpenses)
 						monthTracker.save()
 						return expense
@@ -393,18 +362,6 @@ router.post('/monthTrackers/:monthTrackerId/expense', requireToken, (req, res, n
 			}
 			return expense
 		})
-		// .then( expense => {
-		// 	if(expense.recurring)
-		// 	{
-		// 		Account.findOne({owner: req.user._id})
-		// 			.then( account => {
-		// 				account.recurrences.push(expense)
-		// 				return account.save()
-		// 			})
-		// 			.catch(next)
-		// 	}
-		// 	return expense
-		// })
 		.then( (expense) => res.status(201).json({ expense: expense.toObject() }) )
 		.catch(next)
 })
@@ -423,29 +380,6 @@ router.patch('/monthTrackers/:monthTrackerId/:expenseId', requireToken, removeBl
 			requireOwnership(req, expense)
 			console.log('EXPENSE RECURRING: ', expense.recurring)
 			console.log('RED.BODY.EXPENSE.RECURRING: ', req.body.expense.recurring)
-			// if(!expense.recurring || expense.recurring === true)
-			// if(req.body.expense.recurring === true)
-			// {
-			// 	Account.findOne({owner: req.user._id})
-			// 		.then( account => {
-			// 			if( !account.recurrences.includes(req.body.expense._id) )
-			// 			{
-			// 				account.recurrences.push(expense)
-			// 				return account.save()
-			// 			}
-			// 		})
-			// 		.catch(next)
-			// }
-			// else
-			// {
-			// 	Account.findOne({owner: req.user._id})
-			// 		.then( account => {
-			// 			const expenseIndex = account.recurrences.indexOf(expense._id)
-			// 			account.recurrences.splice(expenseIndex, 1)
-			// 			return account.save()
-			// 		})
-			// 		.catch(next)
-			// }
 			console.log('req.body.expense.category: ', req.body.expense.category )
 			console.log('req.body.expense.category: ', req.body.expense.category === 'Savings')
 			console.log('expense.category: ', expense.category)
@@ -635,6 +569,16 @@ router.patch('/monthTrackers/:monthTrackerId/:expenseId', requireToken, removeBl
 			}
 			// Update the expense
 			return expense.updateOne(req.body.expense)
+		})
+		// Update cashflow for month each time you edit an expense
+		.then( () => {
+			MonthTracker.findById(monthTrackerId)
+				.populate('expenses')
+				.then( monthTracker => {
+					monthTracker.monthly_cashflow = parseFloat(monthTracker.monthlyTakeHome) - parseFloat(monthTracker.totalExpenses)
+					return monthTracker.save()
+				})
+				.catch(next)
 		})
 		.then ( () => res.sendStatus(204))
 		.catch(next)
