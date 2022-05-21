@@ -230,6 +230,9 @@ router.post('/monthTrackers', requireToken, (req, res, next) => {
 				})
 				// Sixth, adjust total cashflow in account document
 				.then( monthTracker => {
+					// Adjust monthly and total cashflow
+					monthTracker.monthly_cashflow = parseFloat(monthTracker.monthlyTakeHome) - parseFloat(monthTracker.totalExpenses)
+
 					Account.findOne({owner: req.user._id})
 						.populate('monthTrackers')
 						.then( account => {
@@ -245,7 +248,7 @@ router.post('/monthTrackers', requireToken, (req, res, next) => {
 							account.save()
 						})
 						.catch(next)
-					return monthTracker
+					return monthTracker.save()
 				})
 				.then( monthTracker => {
 					res.status(201).json({ monthTracker: monthTracker.toObject() })
@@ -439,6 +442,26 @@ router.post('/monthTrackers/:monthTrackerId/expense', requireToken, (req, res, n
 					})
 					.catch(next)
 			}
+			return expense
+		})
+		// Adjust total cashflow in account document
+		.then( expense => {
+			Account.findOne({owner: req.user._id})
+				.populate('monthTrackers')
+				.then( account => {
+					let totalCashflow = 0
+
+					for(let i = 0; i < account.monthTrackers.length; i++)
+					{
+						console.log('monthTracker[i].monthly_cashflow', account.monthTrackers[i].monthly_cashflow)
+						totalCashflow += account.monthTrackers[i].monthly_cashflow
+						console.log('totalcashflow: ', totalCashflow)
+					}
+					account.cashflow = totalCashflow
+					account.save()
+				})
+				.catch(next)
+			
 			return expense
 		})
 		.then( (expense) => res.status(201).json({ expense: expense.toObject() }) )
@@ -660,6 +683,24 @@ router.patch('/monthTrackers/:monthTrackerId/:expenseId', requireToken, removeBl
 				})
 				.catch(next)
 		})
+		// Adjust total cashflow in account document
+		.then( () => {
+			Account.findOne({owner: req.user._id})
+				.populate('monthTrackers')
+				.then( account => {
+					let totalCashflow = 0
+
+					for(let i = 0; i < account.monthTrackers.length; i++)
+					{
+						console.log('monthTracker[i].monthly_cashflow', account.monthTrackers[i].monthly_cashflow)
+						totalCashflow += account.monthTrackers[i].monthly_cashflow
+						console.log('totalcashflow: ', totalCashflow)
+					}
+					account.cashflow = totalCashflow
+					account.save()
+				})
+				.catch(next)
+		})
 		.then ( () => res.sendStatus(204))
 		.catch(next)
 })
@@ -752,6 +793,24 @@ router.delete('/monthTrackers/:monthTrackerId/:expenseId', requireToken, (req, r
 					expense.deleteOne()
 				})
 				.then(() => res.sendStatus(204))
+				.catch(next)
+		})
+		// Adjust total cashflow in account document
+		.then( () => {
+			Account.findOne({owner: req.user._id})
+				.populate('monthTrackers')
+				.then( account => {
+					let totalCashflow = 0
+
+					for(let i = 0; i < account.monthTrackers.length; i++)
+					{
+						console.log('monthTracker[i].monthly_cashflow', account.monthTrackers[i].monthly_cashflow)
+						totalCashflow += account.monthTrackers[i].monthly_cashflow
+						console.log('totalcashflow: ', totalCashflow)
+					}
+					account.cashflow = totalCashflow
+					account.save()
+				})
 				.catch(next)
 		})
 		.catch(next)
