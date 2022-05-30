@@ -366,8 +366,9 @@ router.post('/monthTrackers/:monthTrackerId/expense', requireToken, (req, res, n
 								})
 								.catch(next)
 						}
-						// Adjust monthly cashflow
+						// Adjust monthly cashflow and totalExpenses
 						monthTracker.monthly_cashflow = parseFloat(monthTracker.monthlyTakeHome) - parseFloat(monthTracker.totalExpenses)
+						monthTracker.totalExpenses += expense.amount
 						monthTracker.save()
 						return expense
 					})
@@ -697,9 +698,17 @@ router.delete('/monthTrackers/:monthTrackerId/:expenseId', requireToken, (req, r
 			}
 			return monthTracker
 		})
-		// Adjust monthly_cashflow when expense is deleted
+		// Adjust monthly_cashflow and totalExpenses when expense is deleted
 		.then( monthTracker => {
+			Expense.findById(expenseId)
+				.then( expense => {
+					console.log('EXPENSE', expense)
+					return monthTracker.updateOne({ $inc: {totalExpenses: -(expense.amount)} })
+				})
+				.catch(next)
+
 			monthTracker.monthly_cashflow = parseFloat(monthTracker.monthlyTakeHome) - parseFloat(monthTracker.totalExpenses)
+			
 			return monthTracker.save()
 		})
 		.then( () => {
