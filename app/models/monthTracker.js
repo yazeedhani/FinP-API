@@ -42,6 +42,10 @@ const monthTrackerSchema = new mongoose.Schema(
 				}
 			]
 		,
+		totalExpenses: {
+			type: Number,
+			default: 0
+		},
 		owner: {
 			type: mongoose.Schema.Types.ObjectId,
 			ref: 'User',
@@ -61,16 +65,16 @@ monthTrackerSchema.virtual('monthTrackerTitle').get(function() {
 })
 
 // Calculate total expenses for monthTracker
-monthTrackerSchema.virtual('totalExpenses').get(function() {
-	let total = 0
+// monthTrackerSchema.virtual('totalExpenses').get(function() {
+// 	let total = 0
 
-	for(let i = 0; i < this.expenses.length; i++)
-	{
-		total += this.expenses[i].amount
-	}
+// 	for(let i = 0; i < this.expenses.length; i++)
+// 	{
+// 		total += this.expenses[i].amount
+// 	}
 
-	return total
-})
+// 	return total
+// })
 
 // Calculate monthly cashlow
 monthTrackerSchema.virtual('monthlyCashflow').get(function() {
