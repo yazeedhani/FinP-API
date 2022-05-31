@@ -708,20 +708,15 @@ router.delete('/monthTrackers/:monthTrackerId/:expenseId', requireToken, (req, r
 		.then( monthTracker => {
 			Expense.findById(expenseId)
 				.then( expense => {
-					monthTracker.monthly_cashflow = parseFloat(monthTracker.monthlyTakeHome) - parseFloat(monthTracker.totalExpenses)
 					monthTracker.totalExpenses -= expense.amount
-					console.log('EXPENSE', expense)
-					// monthTracker.updateOne({ $inc: {totalExpenses: -expense.amount} })
-					// monthTracker.updateOne({monthly_cashflow: monthTracker.monthlyTakeHome - monthTracker.totalExpenses})
+					monthTracker.monthly_cashflow = parseFloat(monthTracker.monthlyTakeHome) - parseFloat(monthTracker.totalExpenses)
+
+					return monthTracker.save()
 				})
 				.catch(next)
-				
-			console.log('MONTHTRACKERRRR', monthTracker)
-
-			return monthTracker.save()
 		})
+		// This deletes the expense document
 		.then( () => {
-			// This deletes the expense document
 			Expense.findById(expenseId)
 				.then(handle404)
 				.then( (expense) => {
