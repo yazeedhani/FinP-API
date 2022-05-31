@@ -73,7 +73,7 @@ monthTrackerSchema.virtual('monthTrackerTitle').get(function() {
 // 		total += this.expenses[i].amount
 // 	}
 
-// 	return total
+// 	return (total)
 // })
 
 // Calculate monthly cashlow

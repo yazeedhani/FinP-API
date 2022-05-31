@@ -123,6 +123,8 @@ router.post('/monthTrackers', requireToken, (req, res, next) => {
 			req.body.monthTracker.monthlyTakeHome = parseFloat(income / 12)
 			req.body.monthTracker.budget = parseFloat(req.body.monthTracker.budget)
 			req.body.monthTracker.monthly_cashflow = req.body.monthTracker.monthlyTakeHome
+			req.body.monthTracker.totalExpenses = 0
+	
 			// req.body.monthTracker.expenses = account.recurrences	
 
 			// console.log('UPDATED RECURRENCES: ', account.recurrences)
@@ -182,6 +184,16 @@ router.post('/monthTrackers', requireToken, (req, res, next) => {
 								}
 								
 							}
+							// Calculate monthTracker.totalExpeses if there were any recurring expeneses. **************
+							for(let i = 0; i < expenses.length; i++)
+							{
+								if( expenses[i].category !== 'Savings' )
+								{
+									monthTracker.totalExpenses += expenses[i].amount
+								}
+							}
+							// Calculate monthly cashflow
+							monthTracker.monthly_cashflow = parseFloat(monthTracker.monthlyTakeHome) - parseFloat(monthTracker.totalExpenses)
 							monthTracker.save()
 							console.log('UPDATED MONTHTRACKER: ', monthTracker)
 							return monthTracker
@@ -216,11 +228,8 @@ router.post('/monthTrackers', requireToken, (req, res, next) => {
 					monthTracker.expenses = expenses
 					return monthTracker.save()
 				})
-				// Sixth, adjust total cashflow in account document and monthly cashflow
+				// Sixth, adjust total cashflow in account document
 				.then( monthTracker => {
-					// Adjust monthly and total cashflow
-					monthTracker.monthly_cashflow = parseFloat(monthTracker.monthlyTakeHome) - parseFloat(monthTracker.totalExpenses)
-
 					adjustAccountTotalCashflow(req.user._id, next)
 					return monthTracker.save()
 				})
@@ -248,7 +257,8 @@ router.patch('/monthTrackers/:id', requireToken, removeBlanks, (req, res, next) 
 			console.log('req.body.monthtracker: ', req.body.monthTracker)
 			console.log('Month Tracker: ', monthTracker)
 			// pass the result of Mongoose's `.update` to the next `.then`
-			req.body.monthTracker.monthly_cashflow = req.body.monthTracker.monthlyTakeHome
+			// Recalculate cashflow
+			req.body.monthTracker.monthly_cashflow = req.body.monthTracker.monthlyTakeHome - monthTracker.totalExpenses
 			return monthTracker.updateOne(req.body.monthTracker)
 		})
 		// Adjust total cashflow in account document
@@ -367,8 +377,8 @@ router.post('/monthTrackers/:monthTrackerId/expense', requireToken, (req, res, n
 								.catch(next)
 						}
 						// Adjust monthly cashflow and totalExpenses
-						monthTracker.monthly_cashflow = parseFloat(monthTracker.monthlyTakeHome) - parseFloat(monthTracker.totalExpenses)
 						monthTracker.totalExpenses += expense.amount
+						monthTracker.monthly_cashflow = parseFloat(monthTracker.monthlyTakeHome) - parseFloat(monthTracker.totalExpenses)
 						monthTracker.save()
 						return expense
 					})
@@ -606,12 +616,13 @@ router.patch('/monthTrackers/:monthTrackerId/:expenseId', requireToken, removeBl
 			// Update the expense
 			return expense.updateOne(req.body.expense)
 		})
-		// Update cashflow for month each time you edit an expense
+		// Update cashflow and totalExpenses for month each time you edit an expense
 		.then( () => {
 			MonthTracker.findById(monthTrackerId)
 				.populate('expenses')
 				.then( monthTracker => {
 					monthTracker.monthly_cashflow = parseFloat(monthTracker.monthlyTakeHome) - parseFloat(monthTracker.totalExpenses)
+					monthTracker.totalExpenses = (monthTracker.totalExpenses - expense.amount + req.body.expense.amount)
 					return monthTracker.save()
 				})
 				.catch(next)
@@ -641,6 +652,7 @@ router.delete('/monthTrackers/:monthTrackerId/:expenseId', requireToken, (req, r
 			console.log('expenses in DELETE route', expenses)
 			console.log('expenseId', expenseId)
 
+			//Remove the expense from the expenses array for the monthTracker
 			// FIND THE INDEX OF THE EXPENSE IN THE EXPENSES ARRAY
 			let index = null
 			// Iterate through the expenses array
@@ -657,9 +669,6 @@ router.delete('/monthTrackers/:monthTrackerId/:expenseId', requireToken, (req, r
 						monthTracker.monthly_savings -= expenses[i].amount
 						Account.findOne({owner: req.user._id})
 							.then( account => {
-								console.log('ACCOUNT: ', account)
-								console.log('I : ', i)
-								console.log('EXPENSE: ', expenses)
 								account.savings -= expenses[i].amount
 								return account.save()
 							})
@@ -676,9 +685,6 @@ router.delete('/monthTrackers/:monthTrackerId/:expenseId', requireToken, (req, r
 						monthTracker.monthly_loan_payments -= expenses[i].amount
 						Account.findOne({owner: req.user._id})
 							.then( account => {
-								console.log('ACCOUNT: ', account)
-								console.log('I : ', i)
-								console.log('EXPENSE: ', expenses)
 								account.loans += expenses[i].amount
 								return account.save()
 							})
@@ -702,13 +708,16 @@ router.delete('/monthTrackers/:monthTrackerId/:expenseId', requireToken, (req, r
 		.then( monthTracker => {
 			Expense.findById(expenseId)
 				.then( expense => {
+					monthTracker.monthly_cashflow = parseFloat(monthTracker.monthlyTakeHome) - parseFloat(monthTracker.totalExpenses)
+					monthTracker.totalExpenses -= expense.amount
 					console.log('EXPENSE', expense)
-					return monthTracker.updateOne({ $inc: {totalExpenses: -(expense.amount)} })
+					// monthTracker.updateOne({ $inc: {totalExpenses: -expense.amount} })
+					// monthTracker.updateOne({monthly_cashflow: monthTracker.monthlyTakeHome - monthTracker.totalExpenses})
 				})
 				.catch(next)
+				
+			console.log('MONTHTRACKERRRR', monthTracker)
 
-			monthTracker.monthly_cashflow = parseFloat(monthTracker.monthlyTakeHome) - parseFloat(monthTracker.totalExpenses)
-			
 			return monthTracker.save()
 		})
 		.then( () => {
