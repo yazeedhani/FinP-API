@@ -500,18 +500,14 @@ router.patch('/monthTrackers/:monthTrackerId/:expenseId', requireToken, removeBl
 					.then( monthTracker => {
 						Account.findOne({owner: req.user._id})
 							.then( account => {
-								// account.updateOne({ loans: account.loans - parseFloat(req.body.expense.amount)})
-								// account.updateOne({savings: account.savings - parseFloat(expense.amount)})
 								account.loans -= parseFloat(req.body.expense.amount)
 								account.savings -= parseFloat(expense.amount)
 								return account.save()
-								// return account.updateOne({ loans: account.loans - parseFloat(req.body.expense.amount)}, {savings: account.savings - parseFloat(expense.amount)})
 							})
 							.catch(next)
 						monthTracker.monthly_loan_payments += parseFloat(req.body.expense.amount)
 						monthTracker.monthly_savings -= parseFloat(expense.amount)
 						return monthTracker.save()
-						// return monthTracker.updateOne({monthly_loan_payments: monthTracker.monthly_loan_payments + parseFloat(req.body.expense.amount)}, {monthly_savings: monthTracker.monthly_savings - parseFloat(expense.amount)}) 
 					})
 					.catch(next)
 			}
@@ -556,7 +552,6 @@ router.patch('/monthTrackers/:monthTrackerId/:expenseId', requireToken, removeBl
 									{
 										return account.updateOne({ savings: (account.savings - monthTracker.monthly_savings) + (monthTracker.monthly_savings - expense.amount + updatedSavingsExpense) })
 									}
-									// return account.updateOne({ savings: (account.savings + updatedSavingsExpense) })
 								})
 							.catch(next)
 
@@ -568,7 +563,6 @@ router.patch('/monthTrackers/:monthTrackerId/:expenseId', requireToken, removeBl
 						{
 							return monthTracker.updateOne({ monthly_savings: monthTracker.monthly_savings - expense.amount + updatedSavingsExpense })
 						}
-						// return monthTracker.updateOne({ monthly_savings: monthTracker.monthly_savings + updatedSavingsExpense })
 					})
 					.catch(next)
 			}
@@ -585,7 +579,7 @@ router.patch('/monthTrackers/:monthTrackerId/:expenseId', requireToken, removeBl
 								console.log('MONTHTRACKER LOAN PAYMENTS:', monthTracker.monthly_loan_payments)
 								console.log('EXPENSE.AMOUNT: ', expense.amount)
 								console.log('REQ.BODY.EXPENSE.AMOUNT: ', parseFloat(req.body.expense.amount))
-								// return account.updateOne({ loans: (account.loans + monthTracker.monthly_loan_payments) - (monthTracker.monthly_loan_payments - expense.amount + parseFloat(req.body.expense.amount)) })
+
 								if(monthTracker.monthly_loan_payments === 0)
 								{
 									return account.updateOne({ loans: (account.loans + parseFloat(req.body.expense.amount)) })
@@ -594,13 +588,9 @@ router.patch('/monthTrackers/:monthTrackerId/:expenseId', requireToken, removeBl
 								{
 									return account.updateOne({ loans: (account.loans + monthTracker.monthly_loan_payments) - (monthTracker.monthly_loan_payments - expense.amount + parseFloat(req.body.expense.amount)) })
 								}
-								
-								// return account.updateOne({ loans: (account.loans - parseFloat(req.body.expense.amount)) })
 							})
 							.catch(next)
 						
-							
-						// return monthTracker.updateOne({ monthly_loan_payments: (monthTracker.monthly_loan_payments - expense.amount + parseFloat(req.body.expense.amount)) })
 						if(monthTracker.monthly_loan_payments === 0)
 						{
 							return monthTracker.updateOne({ monthly_loan_payments: parseFloat(req.body.expense.amount) })
@@ -609,23 +599,32 @@ router.patch('/monthTrackers/:monthTrackerId/:expenseId', requireToken, removeBl
 						{
 							return monthTracker.updateOne({ monthly_loan_payments: (monthTracker.monthly_loan_payments - expense.amount + parseFloat(req.body.expense.amount)) })
 						}
-						// return monthTracker.updateOne({ monthly_loan_payments: (monthTracker.monthly_loan_payments + parseFloat(req.body.expense.amount)) })
 					})
 					.catch(next)
 			}
-			// Update the expense
-			return expense.updateOne(req.body.expense)
-		})
-		// Update cashflow and totalExpenses for month each time you edit an expense
-		.then( () => {
-			MonthTracker.findById(monthTrackerId)
-				.populate('expenses')
-				.then( monthTracker => {
-					monthTracker.monthly_cashflow = parseFloat(monthTracker.monthlyTakeHome) - parseFloat(monthTracker.totalExpenses)
-					monthTracker.totalExpenses = (monthTracker.totalExpenses - expense.amount + req.body.expense.amount)
-					return monthTracker.save()
-				})
-				.catch(next)
+			// Update expense, cashflow and totalExpenses for month each time you edit an expense
+			else
+			{
+				console.log('EPXNESSE: ', expense)
+				MonthTracker.findById(monthTrackerId)
+					.populate('expenses')
+					.then( monthTracker => {
+						console.log('TOTAL EXPENSES: ', monthTracker.totalExpenses)
+						console.log('EXPENSE AMOUNT: ', expense.amount)
+						console.log('REQ>BODY.EXPENSE.AMOUNT: ', req.body.expense.amount)
+						// Update total expenses
+						monthTracker.totalExpenses = (monthTracker.totalExpenses - expense.amount) + parseFloat(req.body.expense.amount)
+						// Update monthly cashflow
+						monthTracker.monthly_cashflow = parseFloat(monthTracker.monthlyTakeHome) - parseFloat(monthTracker.totalExpenses)
+						monthTracker.save()
+						// Update the expense
+						expense.name = req.body.expense.name
+						expense.amount = req.body.expense.amount
+						expense.category = req.body.expense.category
+						expense.save()
+					})
+					.catch(next)
+			}
 		})
 		// Adjust total cashflow in account document
 		.then( () => {
