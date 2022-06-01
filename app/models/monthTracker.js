@@ -61,7 +61,7 @@ const monthTrackerSchema = new mongoose.Schema(
 
 // Get title of monthtracker (Month Year)
 monthTrackerSchema.virtual('monthTrackerTitle').get(function() {
-	return `${this.month} ${this.year}`
+	return `${this.month.substring(0,3)} ${this.year}`
 })
 
 // Calculate total expenses for monthTracker
