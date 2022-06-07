@@ -673,9 +673,9 @@ router.delete('/monthTrackers/:monthTrackerId/:expenseId', requireToken, (req, r
 				if(expenses[i]._id == expenseId)
 				{
 					index = i
+					// Decrement the monthly_savings in monthTracker
 					if(expenses[i].category === 'Savings')
 					{
-						// Decrement the monthly_savings in monthTracker
 						monthTracker.monthly_savings -= expenses[i].amount
 						Account.findOne({owner: req.user._id})
 							.then( account => {
@@ -689,9 +689,9 @@ router.delete('/monthTrackers/:monthTrackerId/:expenseId', requireToken, (req, r
 							})
 							.catch(next)
 					}
+					// Decrement the monthly_loan_payments in monthTracker
 					else if(expenses[i].category === 'Loans')
 					{
-						// Decrement the monthly_savings in monthTracker
 						monthTracker.monthly_loan_payments -= expenses[i].amount
 						Account.findOne({owner: req.user._id})
 							.then( account => {
@@ -705,6 +705,14 @@ router.delete('/monthTrackers/:monthTrackerId/:expenseId', requireToken, (req, r
 							})
 							.catch(next)
 					}
+					// Adjust monthly takehome when income transaction is removed
+					else if(expenses[i].category === 'Income')
+					{
+						// Remove the expense from the expenses array
+						monthTracker.monthlyTakeHome -= expenses[i].amount
+						expenses.splice(index, 1)
+						return monthTracker.save()
+					} 
 					else
 					{
 						expenses.splice(index, 1)
@@ -715,10 +723,14 @@ router.delete('/monthTrackers/:monthTrackerId/:expenseId', requireToken, (req, r
 			return monthTracker
 		})
 		// Adjust monthly_cashflow and totalExpenses when expense is deleted
+		// Do not adjust totalExpenses if transaction category is 'Income'
 		.then( monthTracker => {
 			Expense.findById(expenseId)
 				.then( expense => {
-					monthTracker.totalExpenses -= expense.amount
+					if( expense.category !== 'Income')
+					{
+						monthTracker.totalExpenses -= expense.amount
+					}
 					monthTracker.monthly_cashflow = parseFloat(monthTracker.monthlyTakeHome) - parseFloat(monthTracker.totalExpenses)
 
 					return monthTracker.save()
