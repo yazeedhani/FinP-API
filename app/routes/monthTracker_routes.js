@@ -356,6 +356,7 @@ router.post('/monthTrackers/:monthTrackerId/expense', requireToken, (req, res, n
 					.then( monthTracker => {
 						console.log('MONTRACKER IN CREATE ROUTE: ', monthTracker)
 						monthTracker.expenses.push(expense)
+						// If category is 'Savings', add amount to monthly savings and total savings in account
 						if(expense.category === 'Savings')
 						{
 							monthTracker.monthly_savings += expense.amount
@@ -366,6 +367,7 @@ router.post('/monthTrackers/:monthTrackerId/expense', requireToken, (req, res, n
 								})
 								.catch(next)
 						}
+						// If category is 'Loans', add amount to monthly savings and subtract from total loans in account
 						else if(expense.category === 'Loans')
 						{
 							monthTracker.monthly_loan_payments += expense.amount
@@ -376,8 +378,17 @@ router.post('/monthTrackers/:monthTrackerId/expense', requireToken, (req, res, n
 								})
 								.catch(next)
 						}
+						// If category is 'Income', add amount to monthly income
+						else if(expense.category === 'Income')
+						{
+							monthTracker.monthlyTakeHome += expense.amount
+						}
 						// Adjust monthly cashflow and totalExpenses
-						monthTracker.totalExpenses += expense.amount
+						// If category is 'Income', do not add amount to total expenses
+						if(expense.category !== 'Income')
+						{
+							monthTracker.totalExpenses += expense.amount
+						}
 						monthTracker.monthly_cashflow = parseFloat(monthTracker.monthlyTakeHome) - parseFloat(monthTracker.totalExpenses)
 						monthTracker.save()
 						return expense
