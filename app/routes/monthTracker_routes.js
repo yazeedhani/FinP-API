@@ -42,14 +42,35 @@ const adjustAccountTotalCashflow = (userId, next) => {
 
 			for(let i = 0; i < account.monthTrackers.length; i++)
 			{
-				console.log('monthTracker[i].monthly_cashflow', account.monthTrackers[i].monthly_cashflow)
+				// console.log('monthTracker[i].monthly_cashflow', account.monthTrackers[i].monthly_cashflow)
 				totalCashflow += account.monthTrackers[i].monthly_cashflow
-				console.log('totalcashflow: ', totalCashflow)
+				// console.log('totalcashflow: ', totalCashflow)
 			}
 			account.cashflow = totalCashflow
             account.save()
 		})
 		.catch(next)
+}
+
+// Calculate totalExpenses for monthTracker
+const newTotalExpenses = (monthTracker, next) => {
+	let newTotalExpenses = 0
+
+	MonthTracker.findById(monthTracker._id)
+		.populate('expenses')
+		.then( monthTracker => {
+			console.log('MONTHTRACKER FOR NEWTOTALEXPENSES: ', monthTracker)
+			monthTracker.expenses.forEach( expense => {
+				console.log('EXPENSE: ', expense)
+				if( expense.category !== 'Income' )
+				{
+					newTotalExpenses += expense.amount
+				}
+			})
+		})
+		.catch(next)
+	
+	return newTotalExpenses
 }
 
 /******************* MONTHTRACKER ***********************/
@@ -187,10 +208,10 @@ router.post('/monthTrackers', requireToken, (req, res, next) => {
 							// Calculate monthTracker.totalExpeses if there were any recurring expeneses. **************
 							for(let i = 0; i < expenses.length; i++)
 							{
-								if( expenses[i].category !== 'Savings' )
-								{
+								// if( expenses[i].category !== 'Savings' )
+								// {
 									monthTracker.totalExpenses += expenses[i].amount
-								}
+								// }
 							}
 							// Calculate monthly cashflow
 							monthTracker.monthly_cashflow = parseFloat(monthTracker.monthlyTakeHome) - parseFloat(monthTracker.totalExpenses)
@@ -435,26 +456,39 @@ router.patch('/monthTrackers/:monthTrackerId/:expenseId', requireToken, removeBl
 		.then(handle404)
 		.then( (expense) => {
 			requireOwnership(req, expense)
-			console.log('EXPENSE RECURRING: ', expense.recurring)
-			console.log('RED.BODY.EXPENSE.RECURRING: ', req.body.expense.recurring)
-			console.log('req.body.expense.category: ', req.body.expense.category )
-			console.log('req.body.expense.category: ', req.body.expense.category === 'Savings')
-			console.log('expense.category: ', expense.category)
-			console.log('expense.category: ', expense.category === 'Savings')
-			console.log(req.body.expense.category === 'Savings' || expense.category === 'Savings')
+			// console.log('EXPENSE RECURRING: ', expense.recurring)
+			// console.log('RED.BODY.EXPENSE.RECURRING: ', req.body.expense.recurring)
+			// console.log('req.body.expense.category: ', req.body.expense.category )
+			// console.log('req.body.expense.category: ', req.body.expense.category === 'Savings')
+			// console.log('expense.category: ', expense.category)
+			// console.log('expense.category: ', expense.category === 'Savings')
+			// console.log(req.body.expense.category === 'Savings' || expense.category === 'Savings')
 
 			// To edit an expense that is changing its category from Savings to another category, except Loans
 			if(expense.category === 'Savings' && req.body.expense.category !== 'Savings' && req.body.expense.category !== 'Loans')
 			{
 				console.log('ONE')
-				MonthTracker.findById(monthTrackerId)
+				updateMonthTracker_TakeHome = MonthTracker.findById(monthTrackerId)
+					.populate('expenses')
 					.then( monthTracker => {
 						Account.findOne({owner: req.user._id})
 							.then( account => {
+								// Update total savings
 								return account.updateOne({ savings: account.savings - parseFloat(expense.amount)})
 							})
 							.catch(next)
-						return monthTracker.updateOne({monthly_savings: monthTracker.monthly_savings - parseFloat(expense.amount)}) 
+						
+						// If req.body.expense.category is 'Income'
+						if(req.body.expense.category === 'Income')
+						{
+							// Update savings and monthlyTakeHome
+							monthTracker.monthlyTakeHome += parseFloat(req.body.expense.amount)
+							monthTracker.save()
+						}						
+							// Update savings for month tracker
+							console.log('EXPENSE.AMOUNT: ', expense.amount)	
+							return monthTracker.updateOne({monthly_savings: monthTracker.monthly_savings - parseFloat(expense.amount)}) 
+						
 					})
 					.catch(next)
 			}
@@ -499,13 +533,27 @@ router.patch('/monthTrackers/:monthTrackerId/:expenseId', requireToken, removeBl
 								return account.updateOne({ loans: account.loans - parseFloat(req.body.expense.amount)})
 							})
 							.catch(next)
+						
+						if(expense.category === 'Income')
+						{
+							monthTracker.monthlyTakeHome -= expense.amount
+							monthTracker.totalExpenses += parseFloat(req.body.expense.amount)
+							monthTracker.save()
+						}
 						return monthTracker.updateOne({monthly_loan_payments: monthTracker.monthly_loan_payments + parseFloat(req.body.expense.amount)}) 
 					})
 					.catch(next)
+
+				// Update the expense
+				// expense.name = req.body.expense.name
+				// expense.amount = req.body.expense.amount
+				// expense.category = req.body.expense.category
+				// expense.save()
 			}
 			// To edit an expense that is changing its category from Savings to Loans
 			else if(expense.category === 'Savings' && req.body.expense.category === 'Loans')
 			{
+				console.log('FIVE')
 				console.log('SAVINGS TO LOANS')
 				MonthTracker.findById(monthTrackerId)
 					.then( monthTracker => {
@@ -525,6 +573,7 @@ router.patch('/monthTrackers/:monthTrackerId/:expenseId', requireToken, removeBl
 			// To edit an expense that is changing its category from Loans to Savings
 			else if(expense.category === 'Loans' && req.body.expense.category === 'Savings')
 			{
+				console.log('SIX')
 				console.log('LOANS TO SAVINGS')
 				MonthTracker.findById(monthTrackerId)
 					.then( monthTracker => {
@@ -544,6 +593,7 @@ router.patch('/monthTrackers/:monthTrackerId/:expenseId', requireToken, removeBl
 			// To edit an expense with the current category Savings
 			else if(req.body.expense.category === 'Savings' || expense.category === 'Savings')
 			{
+				console.log('SEVEN')
 				console.log('SAVINGS UPDATED')
 				console.log('EXPENSE.AMOUNT: ', expense.amount)
 				const updatedSavingsExpense = parseFloat(req.body.expense.amount)
@@ -580,6 +630,7 @@ router.patch('/monthTrackers/:monthTrackerId/:expenseId', requireToken, removeBl
 			// To edit an expense with the current category Loans
 			else if(expense.category === 'Loans' || req.body.expense.category === 'Loans')
 			{
+				console.log('EIGHT')
 				console.log('LOANS UPDATED')
 				
 				MonthTracker.findById(monthTrackerId)
@@ -613,36 +664,116 @@ router.patch('/monthTrackers/:monthTrackerId/:expenseId', requireToken, removeBl
 					})
 					.catch(next)
 			}
-			// Update expense, cashflow and totalExpenses for month each time you edit an expense
-			else
+			else if( expense.category === 'Income' && req.body.expense.category === 'Income' )
 			{
-				console.log('EPXNESSE: ', expense)
-				MonthTracker.findById(monthTrackerId)
-					.populate('expenses')
-					.then( monthTracker => {
-						console.log('TOTAL EXPENSES: ', monthTracker.totalExpenses)
-						console.log('EXPENSE AMOUNT: ', expense.amount)
-						console.log('REQ>BODY.EXPENSE.AMOUNT: ', req.body.expense.amount)
-						// Update total expenses
-						monthTracker.totalExpenses = (monthTracker.totalExpenses - expense.amount) + parseFloat(req.body.expense.amount)
-						// Update monthly cashflow
-						monthTracker.monthly_cashflow = parseFloat(monthTracker.monthlyTakeHome) - parseFloat(monthTracker.totalExpenses)
-						monthTracker.save()
-						// Update the expense
-						expense.name = req.body.expense.name
-						expense.amount = req.body.expense.amount
-						expense.category = req.body.expense.category
-						expense.save()
-					})
-					.catch(next)
+				console.log('NINE')
+				// monthTracker.monthlyTakeHome = (monthTracker.monthlyTakeHome - expense.amount) + parseFloat(req.body.expense.amount)
+				return monthTracker.updateOne({ monthlyTakeHome: (monthTracker.monthlyTakeHome - expense.amount) + parseFloat(req.body.expense.amount)})
 			}
+			// Update expense, cashflow and totalExpenses for month each time you edit an expense
+			// console.log('EPXNESSE: ', expense)
+			// MonthTracker.findById(monthTrackerId)
+			// 	.populate('expenses')
+			// 	.then( monthTracker => {
+			// 		console.log('TOTAL EXPENSES: ', monthTracker.totalExpenses)
+			// 		console.log('EXPENSE AMOUNT: ', expense.amount)
+			// 		console.log('REQ>BODY.EXPENSE.AMOUNT: ', req.body.expense.amount)
+					// Update the expense
+					// expense.name = req.body.expense.name
+					// expense.amount = req.body.expense.amount
+					// expense.category = req.body.expense.category
+					// expense.save()
+					// Update total expenses if transaction category isn't 'Income'
+					// If transaction category is 'Income' adjust monthly takehome
+					// if( expense.category === 'Income' && req.body.expense.category === 'Income')
+					// {
+					// 	monthTracker.monthlyTakeHome = (monthTracker.monthlyTakeHome - expense.amount) + parseFloat(req.body.expense.amount)
+					// }
+					// else if( expense.category === 'Savings' && req.body.expense.category === 'Income' )
+					// {
+					// 	monthTracker.monthlyTakeHome = monthTracker.monthlyTakeHome + parseFloat(req.body.expense.amount)
+					// }
+					// else
+					// {
+						// let updatedTotalExpenses = 0
+						// monthTracker.expenses.forEach( expense => {
+						// 	console.log('EXPENSE: ', expense)
+						// 	if(expense.category !== 'Income')
+						// 	{
+						// 		updatedTotalExpenses += parseFloat(expense.amount)
+						// 	}
+						// })
+						// monthTracker.totalExpenses = updatedTotalExpenses
+						// monthTracker.totalExpenses = (monthTracker.totalExpenses - expense.amount) + parseFloat(req.body.expense.amount)
+					// }
+					// Update monthly cashflow
+					// monthTracker.monthly_cashflow = parseFloat(monthTracker.monthlyTakeHome) - parseFloat(monthTracker.totalExpenses)
+					// monthTracker.save()
+					
+				// })
+				// .catch(next)
+			return expense
 		})
-		// Adjust total cashflow in account document
-		.then( () => {
-			adjustAccountTotalCashflow(req.user._id, next)
+		.then( expense => {
+			// Update the expense
+			setTimeout( () => {
+				console.log('EXPENSE UPDATED')
+				expense.name = req.body.expense.name
+				expense.amount = req.body.expense.amount
+				expense.category = req.body.expense.category
+				return expense.save()
+			}, 50)
 		})
-		.then ( () => res.sendStatus(204))
 		.catch(next)
+		// .then( () => {
+	
+	setTimeout( () => {
+		MonthTracker.findById(monthTrackerId)
+			.populate('expenses')
+			.then( monthTracker => {
+				console.log('MONTHTRACKER AFTER TAKEHOME UPDATE: ', monthTracker)
+				// Update total expenses if transaction category isn't 'Income'
+				// If transaction category is 'Income' adjust monthly takehome
+				// if( expense.category === 'Income' && req.body.expense.category === 'Income')
+				// {
+				// 	monthTracker.monthlyTakeHome = (monthTracker.monthlyTakeHome - expense.amount) + parseFloat(req.body.expense.amount)
+				// }
+				let updatedTotalExpenses = 0
+				monthTracker.expenses.forEach( expense => {
+					console.log('EXPENSE: ', expense)
+					if(expense.category !== 'Income')
+					{
+						updatedTotalExpenses += parseFloat(expense.amount)
+					}
+				})
+				monthTracker.totalExpenses = updatedTotalExpenses
+				// console.log('UPDATED TOTAL EXPENSES: ', updatedTotalExpenses)
+				
+				// console.log('MONTHLY CASHFLOW: ', monthTracker.monthly_cashflow)
+				// // Update monthly cashflow
+				// monthTracker.monthly_cashflow = parseFloat(monthTracker.monthlyTakeHome) - parseFloat(monthTracker.totalExpenses)
+				console.log('UPDATED MONTHLY-TAKEHOME: ', monthTracker.monthlyTakeHome)
+				return monthTracker.save()
+			})
+			.then( monthTracker => {
+				// Update monthly cashflow
+				console.log('UPDATED MONTHLY-TAKEHOME: ', monthTracker.monthlyTakeHome)
+				console.log('UPDATED TOTAL EXPENSES - MONTHTRACKER: ', monthTracker.totalExpenses)
+				monthTracker.monthly_cashflow = parseFloat(monthTracker.monthlyTakeHome) - parseFloat(monthTracker.totalExpenses)
+				console.log('MONTHLY CASHFLOW: ', monthTracker.monthly_cashflow)
+				return monthTracker.save()
+			})
+			.then( () => {
+				adjustAccountTotalCashflow(req.user._id, next)
+			})
+			.then ( () => res.sendStatus(204))
+			.catch(next)
+	}, 100 )
+
+				// .catch(next)
+		// })
+		// Adjust total cashflow in account document
+		// .catch(next)
 })
 
 // DESTROY -> DELETE /monthTrackers/:monthTrackerID/:expenseId - to delete a single expense for a monthTracker
