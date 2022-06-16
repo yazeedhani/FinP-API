@@ -526,6 +526,14 @@ router.patch('/monthTrackers/:monthTrackerId/:expenseId', requireToken, removeBl
 								return account.updateOne({ savings: account.savings + parseFloat(req.body.expense.amount)})
 							})
 							.catch(next)
+
+						// If req.body.expense.category is 'Income'
+						if(expense.category === 'Income')
+						{
+							// Update savings and monthlyTakeHome
+							monthTracker.monthlyTakeHome -= parseFloat(req.body.expense.amount)
+							monthTracker.save()
+						}
 						return monthTracker.updateOne({monthly_savings: monthTracker.monthly_savings + parseFloat(req.body.expense.amount)}) 
 					})
 					.catch(next)
