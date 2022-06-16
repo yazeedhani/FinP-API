@@ -485,10 +485,9 @@ router.patch('/monthTrackers/:monthTrackerId/:expenseId', requireToken, removeBl
 							monthTracker.monthlyTakeHome += parseFloat(req.body.expense.amount)
 							monthTracker.save()
 						}						
-							// Update savings for month tracker
-							console.log('EXPENSE.AMOUNT: ', expense.amount)	
-							return monthTracker.updateOne({monthly_savings: monthTracker.monthly_savings - parseFloat(expense.amount)}) 
-						
+						// Update savings for month tracker
+						console.log('EXPENSE.AMOUNT: ', expense.amount)	
+						return monthTracker.updateOne({monthly_savings: monthTracker.monthly_savings - parseFloat(expense.amount)}) 
 					})
 					.catch(next)
 			}
@@ -503,6 +502,15 @@ router.patch('/monthTrackers/:monthTrackerId/:expenseId', requireToken, removeBl
 								return account.updateOne({ loans: account.loans + parseFloat(expense.amount)})
 							})
 							.catch(next)
+
+						// If req.body.expense.category is 'Income'
+						if(req.body.expense.category === 'Income')
+						{
+							// Update savings and monthlyTakeHome
+							monthTracker.monthlyTakeHome += parseFloat(req.body.expense.amount)
+							monthTracker.save()
+						}
+						// Update savings for month tracker
 						return monthTracker.updateOne({monthly_loan_payments: monthTracker.monthly_loan_payments - parseFloat(expense.amount)}) 
 					})
 					.catch(next)
@@ -715,7 +723,7 @@ router.patch('/monthTrackers/:monthTrackerId/:expenseId', requireToken, removeBl
 			return expense
 		})
 		.then( expense => {
-			// Update the expense
+			// Update the expense, setTimeout() used to solve timing issue
 			setTimeout( () => {
 				console.log('EXPENSE UPDATED')
 				expense.name = req.body.expense.name
@@ -727,9 +735,12 @@ router.patch('/monthTrackers/:monthTrackerId/:expenseId', requireToken, removeBl
 		.catch(next)
 		// .then( () => {
 	
+	// Re-calculate totalExpenses, monthly cashflow, and total cashflow
+	// setTimeout() used to solve timing issue.
 	setTimeout( () => {
 		MonthTracker.findById(monthTrackerId)
 			.populate('expenses')
+			// Re-calculate total expenses
 			.then( monthTracker => {
 				console.log('MONTHTRACKER AFTER TAKEHOME UPDATE: ', monthTracker)
 				// Update total expenses if transaction category isn't 'Income'
@@ -755,6 +766,7 @@ router.patch('/monthTrackers/:monthTrackerId/:expenseId', requireToken, removeBl
 				console.log('UPDATED MONTHLY-TAKEHOME: ', monthTracker.monthlyTakeHome)
 				return monthTracker.save()
 			})
+			// Re-calculate monthly cashflow
 			.then( monthTracker => {
 				// Update monthly cashflow
 				console.log('UPDATED MONTHLY-TAKEHOME: ', monthTracker.monthlyTakeHome)
@@ -763,6 +775,7 @@ router.patch('/monthTrackers/:monthTrackerId/:expenseId', requireToken, removeBl
 				console.log('MONTHLY CASHFLOW: ', monthTracker.monthly_cashflow)
 				return monthTracker.save()
 			})
+			// Re-calculate total cashflow
 			.then( () => {
 				adjustAccountTotalCashflow(req.user._id, next)
 			})
