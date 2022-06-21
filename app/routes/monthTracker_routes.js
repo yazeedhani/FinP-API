@@ -697,6 +697,7 @@ router.patch('/monthTrackers/:monthTrackerId/:expenseId', requireToken, removeBl
 					})
 					.catch(next)
 			}
+			// To edit an expense with the current category Income
 			else if( expense.category === 'Income' && req.body.expense.category === 'Income' )
 			{
 				console.log('NINE')
@@ -707,7 +708,26 @@ router.patch('/monthTrackers/:monthTrackerId/:expenseId', requireToken, removeBl
 					})
 					.catch(next)
 			}
-			// else if(expense.category === 'Income' && req.body.expense.category === 'Income')
+			// To edit an expense with the current category Income to another category other than Savings and Loans
+			else if( expense.category === 'Income' && req.body.expense.category !== 'Savings' && req.body.expense.category !== 'Loans')
+			{
+				console.log('TEN')
+				MonthTracker.findById(monthTrackerId)
+					.then( monthTracker => {
+						return monthTracker.updateOne({ monthlyTakeHome: (monthTracker.monthlyTakeHome - expense.amount)})
+					})
+					.catch(next)
+			}
+			// To edit an expense from a category other than Income, Savings and Loans to Income category
+			else if( expense.category !== 'Income' && req.body.expense.category === 'Income' && req.body.expense.category !== 'Savings' && req.body.expense.category !== 'Loans')
+			{
+				console.log('ELEVEN')
+				MonthTracker.findById(monthTrackerId)
+					.then( monthTracker => {
+						return monthTracker.updateOne({ monthlyTakeHome: (monthTracker.monthlyTakeHome + parseFloat(req.body.expense.amount))})
+					})
+					.catch(next)
+			}
 			return expense
 		})
 		.then( expense => {
