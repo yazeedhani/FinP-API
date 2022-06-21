@@ -701,8 +701,13 @@ router.patch('/monthTrackers/:monthTrackerId/:expenseId', requireToken, removeBl
 			{
 				console.log('NINE')
 				// monthTracker.monthlyTakeHome = (monthTracker.monthlyTakeHome - expense.amount) + parseFloat(req.body.expense.amount)
-				return monthTracker.updateOne({ monthlyTakeHome: (monthTracker.monthlyTakeHome - expense.amount) + parseFloat(req.body.expense.amount)})
+				MonthTracker.findById(monthTrackerId)
+					.then( monthTracker => {
+						return monthTracker.updateOne({ monthlyTakeHome: (monthTracker.monthlyTakeHome - expense.amount) + parseFloat(req.body.expense.amount)})
+					})
+					.catch(next)
 			}
+			// else if(expense.category === 'Income' && req.body.expense.category === 'Income')
 			return expense
 		})
 		.then( expense => {
@@ -713,7 +718,7 @@ router.patch('/monthTrackers/:monthTrackerId/:expenseId', requireToken, removeBl
 				expense.amount = req.body.expense.amount
 				expense.category = req.body.expense.category
 				return expense.save()
-			}, 50)
+			}, 60)
 		})
 		.catch(next)
 		// .then( () => {
@@ -755,7 +760,7 @@ router.patch('/monthTrackers/:monthTrackerId/:expenseId', requireToken, removeBl
 			})
 			.then ( () => res.sendStatus(204))
 			.catch(next)
-	}, 100 )
+	}, 110 )
 })
 
 // DESTROY -> DELETE /monthTrackers/:monthTrackerID/:expenseId - to delete a single expense for a monthTracker
