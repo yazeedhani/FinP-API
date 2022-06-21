@@ -189,7 +189,8 @@ router.post('/monthTrackers', requireToken, (req, res, next) => {
 					}
 
 					MonthTracker.findOne({ _id: monthTrackerId })
-						// Increment loan payments and savings amounts for the month
+						// Fifth, increment loan payments. monthlyTakeHome, and savings amounts for the month
+						// if any of the expenses for the monthTracker have a category of 'Savings', 'Loans', or 'Income'
 						.then( monthTracker => {
 							console.log('Queried MONTHTRACKER: ', monthTracker)
 							for(let i = 0; i < expenses.length; i++)
@@ -203,23 +204,27 @@ router.post('/monthTrackers', requireToken, (req, res, next) => {
 								{
 									monthTracker.monthly_savings += expenses[i].amount
 								}
+								else if( expenses[i].category === 'Income' )
+								{
+									monthTracker.monthlyTakeHome += expenses[i].amount
+								}
 								
 							}
-							// Calculate monthTracker.totalExpeses if there were any recurring expeneses. **************
+							// Sixth, calculate monthTracker.totalExpeses if there were any recurring expeneses, excluding expenses with an 'Income' category.
 							for(let i = 0; i < expenses.length; i++)
 							{
-								// if( expenses[i].category !== 'Savings' )
-								// {
+								if( expenses[i].category !== 'Income' )
+								{
 									monthTracker.totalExpenses += expenses[i].amount
-								// }
+								}
 							}
-							// Calculate monthly cashflow
+							// Seventh, calculate monthly cashflow
 							monthTracker.monthly_cashflow = parseFloat(monthTracker.monthlyTakeHome) - parseFloat(monthTracker.totalExpenses)
 							monthTracker.save()
 							console.log('UPDATED MONTHTRACKER: ', monthTracker)
 							return monthTracker
 						})
-						// Adjust total loans payments and savings for the account document
+						// Eigth, adjust total loans payments and savings for the account document
 						.then( monthTracker => {
 							for(let i = 0; i < expenses.length; i++)
 							{
@@ -240,7 +245,7 @@ router.post('/monthTrackers', requireToken, (req, res, next) => {
 
 					return [expenses, monthTracker]
 				})
-				// Fifth, add the expenses with the new monthTracker's ID to its expenses array in monthTracker
+				// Ninth, add the expenses with the new monthTracker's ID to its expenses array in monthTracker
 				.then( response => {
 					const expenses = response[0]
 					const monthTracker = response[1]
@@ -249,7 +254,7 @@ router.post('/monthTrackers', requireToken, (req, res, next) => {
 					monthTracker.expenses = expenses
 					return monthTracker.save()
 				})
-				// Sixth, adjust total cashflow in account document
+				// Tenth, adjust total cashflow in account document
 				.then( monthTracker => {
 					adjustAccountTotalCashflow(req.user._id, next)
 					return monthTracker.save()
