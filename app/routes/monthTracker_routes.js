@@ -102,7 +102,6 @@ router.get('/monthTrackers', requireToken, async (req, res, next) => {
 	// 	.catch(next)
 	try {
 		const monthTrackersByOwner = await MonthTracker.find({owner: userId})
-	
 		const monthTrackersByOwnerJsObjects = monthTrackersByOwner.map((monthTracker) => monthTracker.toObject())
 		res.status(200).json({ monthTrackers: monthTrackersByOwnerJsObjects })
 	}
@@ -112,28 +111,39 @@ router.get('/monthTrackers', requireToken, async (req, res, next) => {
 })
 
 // SHOW -> GET /monthTrackers/5a7db6c74d55bc51bdf39793
-router.get('/monthTrackers/:id', requireToken, (req, res, next) => {
+router.get('/monthTrackers/:id', requireToken, async (req, res, next) => {
 	// req.params.id will be set based on the `:id` in the route
 
-	MonthTracker.findById(req.params.id)
-		.populate('expenses')
-		.then(handle404)
-		// if `findById` is succesful, respond with 200 and "monthTracker" JSON
-		.then((monthTracker) => {
-			requireOwnership(req, monthTracker)
-			console.log('MONTHTRACKERRRRRR: ', monthTracker)
-			monthTracker.save()
-			// console.log('TOtal expenses', monthTracker.totalExpenses)
-			res.status(200).json({ monthTracker: monthTracker.toObject() })
-		})
-		// Adjust total cashflow in account document when an new expense is created, updated, or deleted
-		// This is placed here because you are redirected to the monthTracker show page after you create, update, or delete an expense
-		.then( expense => {
-			adjustAccountTotalCashflow(req.user._id, next)
-			return expense
-		})
-		// if an error occurs, pass it to the handler
-		.catch(next)
+	// MonthTracker.findById(req.params.id)
+	// 	.populate('expenses')
+	// 	.then(handle404)
+	// 	// if `findById` is succesful, respond with 200 and "monthTracker" JSON
+	// 	.then((monthTracker) => {
+	// 		requireOwnership(req, monthTracker)
+	// 		console.log('MONTHTRACKERRRRRR: ', monthTracker)
+	// 		monthTracker.save()
+	// 		// console.log('TOtal expenses', monthTracker.totalExpenses)
+	// 		res.status(200).json({ monthTracker: monthTracker.toObject() })
+	// 	})
+	// 	// Adjust total cashflow in account document when an new expense is created, updated, or deleted
+	// 	// This is placed here because you are redirected to the monthTracker show page after you create, update, or delete an expense
+	// 	// .then( expense => {
+	// 	// 	console.log('EXPENSE:', expense)
+	// 	// 	adjustAccountTotalCashflow(req.user._id, next)
+	// 	// 	return expense
+	// 	// })
+	// 	// if an error occurs, pass it to the handler
+	// 	.catch(next)
+	
+	try {
+		const monthTrackerById = await MonthTracker.findById(req.params.id).populate('expenses')
+		// handle 404 here
+		requireOwnership(req, monthTrackerById)
+		res.status(200).json({ monthTracker: monthTrackerById.toObject() })
+	}
+	catch(error) {
+		console.log('Error:', error)
+	}
 })
 
 // CREATE -> POST /monthTrackers
