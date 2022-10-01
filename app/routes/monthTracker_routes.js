@@ -7,6 +7,7 @@ const passport = require('passport')
 const MonthTracker = require('../models/monthTracker')
 const Expense = require('../models/expense')
 const Account = require('../models/account')
+const Year = require('../models/year')
 
 // this is a collection of methods that help us detect situations when we need
 // to throw a custom error
@@ -35,10 +36,11 @@ const router = express.Router()
 
 // Adjust total cashflow for account document	
 const adjustAccountTotalCashflow = (userId, next) => {
+	let totalCashflow = 0
 	Account.findOne({owner: userId})
 		.populate('monthTrackers')
 		.then( account => {
-			let totalCashflow = 0
+			// let totalCashflow = 0
 
 			for(let i = 0; i < account.monthTrackers.length; i++)
 			{
@@ -49,7 +51,8 @@ const adjustAccountTotalCashflow = (userId, next) => {
 			account.cashflow = totalCashflow
             account.save()
 		})
-		.catch(next)
+		// .catch(next)
+	return totalCashflow	
 }
 
 // Calculate totalExpenses for monthTracker
@@ -76,27 +79,36 @@ const newTotalExpenses = (monthTracker, next) => {
 /******************* MONTHTRACKER ***********************/
 
 // INDEX -> GET /monthTrackers - get monthTrackers only for the logged in user
-router.get('/monthTrackers', requireToken, (req, res, next) => {
+router.get('/monthTrackers', requireToken, async (req, res, next) => {
 	const userId = req.user._id
-	MonthTracker.find({owner: userId})
-	.then( monthTrackers => {
-		// To prevent access to a user who does not own the monthTrackers
-		for(let i = 0; i < monthTrackers.length; i++)
-		{
-				requireOwnership(req, monthTrackers[i])
-			}
-			return monthTrackers
-		})
-		.then((monthTrackers) => {
-			// `monthTrackers` will be an array of Mongoose documents
-			// we want to convert each one to a POJO from BSON, so we use `.map` to
-			// apply `.toObject` to each one
-			return monthTrackers.map((monthTracker) => monthTracker.toObject())
-		})
-		// respond with status 200 and JSON of the monthTrackers
-		.then((monthTrackers) => res.status(200).json({ monthTrackers: monthTrackers }))
-		// if an error occurs, pass it to the handler
-		.catch(next)
+	// MonthTracker.find({owner: userId})
+	// 	.then( monthTrackers => {
+	// 	// To prevent access to a user who does not own the monthTrackers
+	// 	for(let i = 0; i < monthTrackers.length; i++)
+	// 	{
+	// 			requireOwnership(req, monthTrackers[i])
+	// 	}
+	// 		return monthTrackers
+	// 	})
+	// 	.then((monthTrackers) => {
+	// 		// `monthTrackers` will be an array of Mongoose documents
+	// 		// we want to convert each one to a POJO from BSON, so we use `.map` to
+	// 		// apply `.toObject` to each one
+	// 		return monthTrackers.map((monthTracker) => monthTracker.toObject())
+	// 	})
+	// 	// respond with status 200 and JSON of the monthTrackers
+	// 	.then((monthTrackers) => res.status(200).json({ monthTrackers: monthTrackers }))
+	// 	// if an error occurs, pass it to the handler
+	// 	.catch(next)
+	try {
+		const monthTrackersByOwner = await MonthTracker.find({owner: userId})
+	
+		const monthTrackersByOwnerJsObjects = monthTrackersByOwner.map((monthTracker) => monthTracker.toObject())
+		res.status(200).json({ monthTrackers: monthTrackersByOwnerJsObjects })
+	}
+	catch(error) {
+		console.log('Error:', error)
+	}
 })
 
 // SHOW -> GET /monthTrackers/5a7db6c74d55bc51bdf39793
@@ -155,6 +167,23 @@ router.post('/monthTrackers', requireToken, (req, res, next) => {
 					console.log('NEW MONTHTRACKER: ', monthTracker)
 					monthTrackerId = monthTracker._id
 					console.log('MONTHTRACKER ID : ', monthTrackerId)
+
+					// let yearExists
+					Year.exists({year: req.body.monthTracker.year})
+						.then( result => {
+							console.log('RESULT: ', result)
+							if(!result)
+							{
+								Year.create({year: req.body.monthTracker.year, monthTrackers: [req.body.monthTracker]})
+							}
+							else
+							{
+								return Year.findOneAndUpdate({year: req.body.monthTracker.year}, {$push: {monthTrackers: req.body.monthTracker}})
+									// .then
+							}
+						} )
+					
+
 					// Add new monthTracker to account array monthTrackers
 					account.monthTrackers.push(monthTracker._id)
 					
@@ -350,25 +379,30 @@ router.delete('/monthTrackers/:monthTrackerId', requireToken, (req, res, next) =
 /******************* EXPENSES ***********************/
 
 // INDEX -> GET /monthTrackers/:monthTrackerId/expenses - to display expenses array in a monthTracker
-router.get('/monthTrackers/:monthTrackerId/expenses', requireToken, (req, res, next) => {
+router.get('/monthTrackers/:monthTrackerId/expenses', requireToken, async (req, res, next) => {
     const monthTrackerId = req.params.monthTrackerId
 
-    MonthTracker.findById(monthTrackerId)
+    await MonthTracker.findById(monthTrackerId)
 		.populate('expenses')
 		.then(handle404)
 		.then( (monthTracker) => {
 			requireOwnership(req, monthTracker)
+			for(let i = 0; i <= 10; i++){
+				console.log(i)
+			}
 			return monthTracker.expenses
 		})
-		.then( (expenses) => res.status(200).json({ expenses: expenses.toObject() }) )
+		.then( (expenses) => {
+			console.log('11')
+			res.status(200).json({ expenses: expenses.toObject() }) })
         .catch(next)
 })
 
 // SHOW -> GET /monthTrackers/:monthTrackerID/:expenseId - to display a single expense for a monthTracker
-router.get('/monthTrackers/:monthTrackerId/:expenseId', requireToken, (req, res, next) => {
+router.get('/monthTrackers/:monthTrackerId/:expenseId', requireToken, async (req, res, next) => {
 	const expenseId = req.params.expenseId
 
-	Expense.findById(expenseId)
+	await Expense.findById(expenseId)
 		.then(handle404)
 		.then( expense => {
 			requireOwnership(req, expense)
@@ -379,7 +413,7 @@ router.get('/monthTrackers/:monthTrackerId/:expenseId', requireToken, (req, res,
 
 // CREATE -> POST /monthTrackers/:monthTrackerId/expenses 
 // - to create a new expense add it to the expenses array in the current monthTracker document
-router.post('/monthTrackers/:monthTrackerId/expense', requireToken, (req, res, next) => {
+router.post('/monthTrackers/:monthTrackerId/expense', requireToken, async (req, res, next) => {
 	const monthTrackerId = req.params.monthTrackerId
 	req.body.expense.owner = req.user._id
 	req.body.expense.monthTracker = monthTrackerId
@@ -894,4 +928,4 @@ router.delete('/monthTrackers/:monthTrackerId/:expenseId', requireToken, (req, r
 
 })
 
-module.exports = router
+module.exports = router, adjustAccountTotalCashflow
