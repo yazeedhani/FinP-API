@@ -35,24 +35,25 @@ const router = express.Router()
 
 
 // Adjust total cashflow for account document	
-const adjustAccountTotalCashflow = (userId, next) => {
+const adjustAccountTotalCashflow = async (userId) => {
 	let totalCashflow = 0
-	Account.findOne({owner: userId})
-		.populate('monthTrackers')
-		.then( account => {
-			// let totalCashflow = 0
 
-			for(let i = 0; i < account.monthTrackers.length; i++)
-			{
-				// console.log('monthTracker[i].monthly_cashflow', account.monthTrackers[i].monthly_cashflow)
-				totalCashflow += account.monthTrackers[i].monthly_cashflow
-				// console.log('totalcashflow: ', totalCashflow)
-			}
-			account.cashflow = totalCashflow
-            account.save()
+	try {
+		const userAccount = await Account.findOne({owner: userId}).populate('monthTrackers')
+	
+		userAccount.monthTrackers.forEach( monthTracker => {
+			console.log('monthTracker[i].monthly_cashflow', monthTracker.monthly_cashflow)
+			totalCashflow += monthTracker.monthly_cashflow
+			console.log('totalcashflow: ', totalCashflow)
 		})
-		// .catch(next)
-	return totalCashflow	
+
+		userAccount.cashflow = totalCashflow
+		userAccount.save()
+		return totalCashflow	
+	}
+	catch(error) {
+		console.log('Error:', error)
+	}
 }
 
 // Calculate totalExpenses for monthTracker
@@ -138,6 +139,7 @@ router.get('/monthTrackers/:id', requireToken, async (req, res, next) => {
 	try {
 		const monthTrackerById = await MonthTracker.findById(req.params.id).populate('expenses')
 		// handle 404 here
+		console.log('MONTHTRACKER BY ID:', monthTrackerById)
 		requireOwnership(req, monthTrackerById)
 		res.status(200).json({ monthTracker: monthTrackerById.toObject() })
 	}
@@ -147,163 +149,251 @@ router.get('/monthTrackers/:id', requireToken, async (req, res, next) => {
 })
 
 // CREATE -> POST /monthTrackers
-router.post('/monthTrackers', requireToken, (req, res, next) => {
+router.post('/monthTrackers', requireToken, async (req, res, next) => {
 	// set owner, annualTakeHome, and monthlyTakeHome of new monthTracker
 	console.log('req.user:', req.user)
 	console.log('req.body.monthTracker:', req.body.monthTracker)
-	let income
-	let monthTrackerId
+	// let income
+	// let monthTrackerId
 
-	Account.findOne({owner: req.user._id})
-		.populate('monthTrackers')
-		.then( account => {
-			console.log('ACCOUNT:', account)
+	// Account.findOne({owner: req.user._id})
+	// 	.populate('monthTrackers')
+	// 	.then( account => {
+	// 		console.log('ACCOUNT:', account)
 
-			income = account.income
-			req.body.monthTracker.owner = req.user._id
-			req.body.monthTracker.year = parseInt(req.body.monthTracker.year)
-			req.body.monthTracker.annualTakeHome = income
-			req.body.monthTracker.monthlyTakeHome = parseFloat(income / 12)
-			req.body.monthTracker.budget = parseFloat(req.body.monthTracker.budget)
-			req.body.monthTracker.monthly_cashflow = req.body.monthTracker.monthlyTakeHome
-			req.body.monthTracker.totalExpenses = 0
+	// 		income = account.income
+	// 		req.body.monthTracker.owner = req.user._id
+	// 		req.body.monthTracker.year = parseInt(req.body.monthTracker.year)
+	// 		req.body.monthTracker.annualTakeHome = income
+	// 		req.body.monthTracker.monthlyTakeHome = parseFloat(income / 12)
+	// 		req.body.monthTracker.budget = parseFloat(req.body.monthTracker.budget)
+	// 		req.body.monthTracker.monthly_cashflow = req.body.monthTracker.monthlyTakeHome
+	// 		req.body.monthTracker.totalExpenses = 0
 	
-			// req.body.monthTracker.expenses = account.recurrences	
+	// 		// req.body.monthTracker.expenses = account.recurrences	
 
-			// console.log('UPDATED RECURRENCES: ', account.recurrences)
-			// First, create the monthTracker
-			const newMonthTracker = MonthTracker.create(req.body.monthTracker)
-				.then( monthTracker => {
-					console.log('NEW MONTHTRACKER: ', monthTracker)
-					monthTrackerId = monthTracker._id
-					console.log('MONTHTRACKER ID : ', monthTrackerId)
+	// 		// console.log('UPDATED RECURRENCES: ', account.recurrences)
+	// 		// First, create the monthTracker
+	// 		const newMonthTracker = MonthTracker.create(req.body.monthTracker)
+	// 			.then( monthTracker => {
+	// 				console.log('NEW MONTHTRACKER: ', monthTracker)
+	// 				monthTrackerId = monthTracker._id
+	// 				console.log('MONTHTRACKER ID : ', monthTrackerId)
 
-					// let yearExists
-					Year.exists({year: req.body.monthTracker.year})
-						.then( result => {
-							console.log('RESULT: ', result)
-							if(!result)
-							{
-								Year.create({year: req.body.monthTracker.year, monthTrackers: [req.body.monthTracker]})
-							}
-							else
-							{
-								return Year.findOneAndUpdate({year: req.body.monthTracker.year}, {$push: {monthTrackers: req.body.monthTracker}})
-									// .then
-							}
-						} )
+	// 				// let yearExists
+	// 				// Year.exists({year: req.body.monthTracker.year})
+	// 				// 	.then( result => {
+	// 				// 		console.log('RESULT: ', result)
+	// 				// 		if(!result)
+	// 				// 		{
+	// 				// 			Year.create({year: req.body.monthTracker.year, monthTrackers: [req.body.monthTracker]})
+	// 				// 		}
+	// 				// 		else
+	// 				// 		{
+	// 				// 			return Year.findOneAndUpdate({year: req.body.monthTracker.year}, {$push: {monthTrackers: req.body.monthTracker}})
+	// 				// 				// .then
+	// 				// 		}
+	// 				// 	} )
 					
 
-					// Add new monthTracker to account array monthTrackers
-					account.monthTrackers.push(monthTracker._id)
+	// 				// Add new monthTracker to account array monthTrackers
+	// 				account.monthTrackers.push(monthTracker._id)
 					
-					return monthTracker
-				})
-				.catch(next)
+	// 				return monthTracker
+	// 			})
+	// 			.catch(next)
 
-			// Second, create the Expense documents using insertMany() from the account.recurrences
-			const recurringExpenses = Expense.insertMany(account.recurrences)
-				.then( expenses => {
-					console.log('NEW EXPENSES: ', expenses)
-					return expenses
-				})
-				.catch(next)
+	// 		// Second, create the Expense documents using insertMany() from the account.recurrences
+	// 		const recurringExpenses = Expense.insertMany(account.recurrences)
+	// 			.then( expenses => {
+	// 				console.log('NEW EXPENSES: ', expenses)
+	// 				return expenses
+	// 			})
+	// 			.catch(next)
 
-			// Third, use a Promise.all() to catch the promises above
-			Promise.all([recurringExpenses, newMonthTracker])
-				.then( responseData => {
-					console.log('RESPONSE DATA [0] - expenses: ', responseData[0])
-					console.log('RESPONSE DATA [1] - monthTracker: ', responseData[1])
-					const expenses = responseData[0]
-					const monthTracker = responseData[1]
-					console.log('MONTHTRACKER ID : ', monthTrackerId)
-					// Fourth, then assign each expense the new monthTrackerId
-					for(let i = 0; i < expenses.length; i++)
-					{
-						console.log(`EXPENSES${[i]} : `, expenses[i])
-						expenses[i].monthTracker = monthTracker._id
-						delete expenses[i].recurringId
-						// expenses[i].updateOne({ monthTracker: monthTracker._id})
-						expenses[i].save()
-					}
+	// 		// Third, use a Promise.all() to catch the promises above
+	// 		Promise.all([recurringExpenses, newMonthTracker])
+	// 			.then( responseData => {
+	// 				console.log('RESPONSE DATA [0] - expenses: ', responseData[0])
+	// 				console.log('RESPONSE DATA [1] - monthTracker: ', responseData[1])
+	// 				const expenses = responseData[0]
+	// 				const monthTracker = responseData[1]
+	// 				console.log('MONTHTRACKER ID : ', monthTrackerId)
+	// 				// Fourth, then assign each expense the new monthTrackerId
+	// 				for(let i = 0; i < expenses.length; i++)
+	// 				{
+	// 					console.log(`EXPENSES${[i]} : `, expenses[i])
+	// 					expenses[i].monthTracker = monthTracker._id
+	// 					delete expenses[i].recurringId
+	// 					// expenses[i].updateOne({ monthTracker: monthTracker._id})
+	// 					expenses[i].save()
+	// 				}
 
-					MonthTracker.findOne({ _id: monthTrackerId })
-						// Fifth, increment loan payments. monthlyTakeHome, and savings amounts for the month
-						// if any of the expenses for the monthTracker have a category of 'Savings', 'Loans', or 'Income'
-						.then( monthTracker => {
-							console.log('Queried MONTHTRACKER: ', monthTracker)
-							for(let i = 0; i < expenses.length; i++)
-							{
-								if( expenses[i].category === 'Loans' )
-								{
-									monthTracker.monthly_loan_payments += expenses[i].amount
-									// account.loans += expenses[i].amount
-								}
-								else if( expenses[i].category === 'Savings' )
-								{
-									monthTracker.monthly_savings += expenses[i].amount
-								}
-								else if( expenses[i].category === 'Income' )
-								{
-									monthTracker.monthlyTakeHome += expenses[i].amount
-								}
+	// 				MonthTracker.findOne({ _id: monthTrackerId })
+	// 					// Fifth, increment loan payments. monthlyTakeHome, and savings amounts for the month
+	// 					// if any of the expenses for the monthTracker have a category of 'Savings', 'Loans', or 'Income'
+	// 					.then( monthTracker => {
+	// 						console.log('Queried MONTHTRACKER: ', monthTracker)
+	// 						for(let i = 0; i < expenses.length; i++)
+	// 						{
+	// 							if( expenses[i].category === 'Loans' )
+	// 							{
+	// 								monthTracker.monthly_loan_payments += expenses[i].amount
+	// 								// account.loans += expenses[i].amount
+	// 							}
+	// 							else if( expenses[i].category === 'Savings' )
+	// 							{
+	// 								monthTracker.monthly_savings += expenses[i].amount
+	// 							}
+	// 							else if( expenses[i].category === 'Income' )
+	// 							{
+	// 								monthTracker.monthlyTakeHome += expenses[i].amount
+	// 							}
 								
-							}
-							// Sixth, calculate monthTracker.totalExpeses if there were any recurring expeneses, excluding expenses with an 'Income' category.
-							for(let i = 0; i < expenses.length; i++)
-							{
-								if( expenses[i].category !== 'Income' )
-								{
-									monthTracker.totalExpenses += expenses[i].amount
-								}
-							}
-							// Seventh, calculate monthly cashflow
-							monthTracker.monthly_cashflow = parseFloat(monthTracker.monthlyTakeHome) - parseFloat(monthTracker.totalExpenses)
-							monthTracker.save()
-							console.log('UPDATED MONTHTRACKER: ', monthTracker)
-							return monthTracker
-						})
-						// Eigth, adjust total loans payments and savings for the account document
-						.then( monthTracker => {
-							for(let i = 0; i < expenses.length; i++)
-							{
-								if( expenses[i].category === 'Loans' )
-								{
-									// monthTracker.monthly_loan_payments += expenses[i].amount
-									account.loans -= expenses[i].amount
-								}
-								else if( expenses[i].category === 'Savings' )
-								{
-									// monthTracker.monthly_savings += expenses[i].amount
-									account.savings += expenses[i].amount
-								}
-							}
-							account.save()
-						})
-						.catch(next)
+	// 						}
+	// 						// Sixth, calculate monthTracker.totalExpeses if there were any recurring expeneses, excluding expenses with an 'Income' category.
+	// 						for(let i = 0; i < expenses.length; i++)
+	// 						{
+	// 							if( expenses[i].category !== 'Income' )
+	// 							{
+	// 								monthTracker.totalExpenses += expenses[i].amount
+	// 							}
+	// 						}
+	// 						// Seventh, calculate monthly cashflow
+	// 						monthTracker.monthly_cashflow = parseFloat(monthTracker.monthlyTakeHome) - parseFloat(monthTracker.totalExpenses)
+	// 						monthTracker.save()
+	// 						console.log('UPDATED MONTHTRACKER: ', monthTracker)
+	// 						return monthTracker
+	// 					})
+	// 					// Eigth, adjust total loans payments and savings for the account document
+	// 					.then( monthTracker => {
+	// 						for(let i = 0; i < expenses.length; i++)
+	// 						{
+	// 							if( expenses[i].category === 'Loans' )
+	// 							{
+	// 								// monthTracker.monthly_loan_payments += expenses[i].amount
+	// 								account.loans -= expenses[i].amount
+	// 							}
+	// 							else if( expenses[i].category === 'Savings' )
+	// 							{
+	// 								// monthTracker.monthly_savings += expenses[i].amount
+	// 								account.savings += expenses[i].amount
+	// 							}
+	// 						}
+	// 						account.save()
+	// 					})
+	// 					.catch(next)
 
-					return [expenses, monthTracker]
-				})
-				// Ninth, add the expenses with the new monthTracker's ID to its expenses array in monthTracker
-				.then( response => {
-					const expenses = response[0]
-					const monthTracker = response[1]
-					console.log('RESPONSE: ', response)
+	// 				return [expenses, monthTracker]
+	// 			})
+	// 			// Ninth, add the expenses with the new monthTracker's ID to its expenses array in monthTracker
+	// 			.then( response => {
+	// 				const expenses = response[0]
+	// 				const monthTracker = response[1]
+	// 				console.log('RESPONSE: ', response)
 
-					monthTracker.expenses = expenses
-					return monthTracker.save()
-				})
-				// Tenth, adjust total cashflow in account document
-				.then( monthTracker => {
-					adjustAccountTotalCashflow(req.user._id, next)
-					return monthTracker.save()
-				})
-				.then( monthTracker => {
-					res.status(201).json({ monthTracker: monthTracker.toObject() })
-				})
-				.catch(next)
+	// 				monthTracker.expenses = expenses
+	// 				return monthTracker.save()
+	// 			})
+	// 			// Tenth, adjust total cashflow in account document
+	// 			.then( monthTracker => {
+	// 				adjustAccountTotalCashflow(req.user._id, next)
+	// 				return monthTracker.save()
+	// 			})
+	// 			.then( monthTracker => {
+	// 				res.status(201).json({ monthTracker: monthTracker.toObject() })
+	// 			})
+	// 			.catch(next)
+	// 	})
+	// 	.catch(next)
+
+	try {
+		// set income and monthtrackerId variables using let
+		let income
+		let monthTrackerId
+
+		// Find account for logged in user and populate monthTrackers
+		const loggedInUserAccount = await Account.findOne({owner: req.user._id}).populate('monthTrackers')
+		console.log('loggedInUserAccount:', loggedInUserAccount)
+		// then set income and properties for req.body.monthTracker
+		income = loggedInUserAccount.income
+		req.body.monthTracker.owner = req.user._id
+		req.body.monthTracker.year = parseInt(req.body.monthTracker.year)
+		req.body.monthTracker.annualTakeHome = income
+		req.body.monthTracker.monthlyTakeHome = parseFloat(income / 12)
+		req.body.monthTracker.budget = parseFloat(req.body.monthTracker.budget)
+		req.body.monthTracker.monthly_cashflow = req.body.monthTracker.monthlyTakeHome
+		req.body.monthTracker.totalExpenses = 0
+
+		// First, create new monthTracker
+		const newMonthTracker = await MonthTracker.create(req.body.monthTracker)
+		monthTrackerId = newMonthTracker._id
+		console.log('New Month Tracker: ', newMonthTracker)
+		// add new monthTracker to account
+		loggedInUserAccount.monthTrackers.push(monthTrackerId)
+
+		// Second, create the recurring Expense documents using insertMany() from the account.recurrences
+		const recurringExpenses = await Expense.insertMany(loggedInUserAccount.recurrences)
+
+		// Third, assign each recurring expense the new monthTrackerId
+		recurringExpenses.forEach( recurringExpense => {
+			recurringExpense.monthTracker = monthTracker._id
+			delete recurringExpense.recurringId
+			recurringExpense.save()
 		})
-		.catch(next)
+		// Fourth, increment loan payments. monthlyTakeHome, and savings amounts for the month
+		recurringExpenses.forEach( recurringExpense => {
+			if( recurringExpense.category === 'Loans' )
+			{
+				newMonthTracker.monthly_loan_payments += recurringExpense.amount
+				// account.loans += expenses[i].amount
+			}
+			else if( recurringExpense.category === 'Savings' )
+			{
+				newMonthTracker.monthly_savings += recurringExpense.amount
+			}
+			else if( recurringExpense.category === 'Income' )
+			{
+				newMonthTracker.monthlyTakeHome += recurringExpense.amount
+			}
+		})
+		// Fifth, calculate monthTracker.totalExpeses if there were any recurring expeneses, excluding expenses with an 'Income' category.
+		recurringExpenses.forEach( recurringExpense => {
+			if( recurringExpense.category !== 'Income' )
+			{
+				newMonthTracker.totalExpenses += recurringExpense.amount
+			}
+		})
+		// Sixth, calculate monthly cashflow
+		newMonthTracker.monthly_cashflow = parseFloat(newMonthTracker.monthlyTakeHome) - parseFloat(newMonthTracker.totalExpenses)
+		// newMonthTracker.save()
+		console.log('UPDATED MONTHTRACKER: ', newMonthTracker)
+
+		// Seventh, adjust total loans payments and savings for the account document
+		recurringExpenses.forEach( recurringExpense => {
+			if( recurringExpense.category === 'Loans' )
+			{
+				// monthTracker.monthly_loan_payments += expenses[i].amount
+				loggedInUserAccount.loans -= recurringExpense.amount
+			}
+			else if( recurringExpense.category === 'Savings' )
+			{
+				// monthTracker.monthly_savings += expenses[i].amount
+				loggedInUserAccount.savings += recurringExpense.amount
+			}
+		})
+		loggedInUserAccount.save()
+		// Eigth, add the expenses with the new monthTracker's ID to its expenses array in monthTracker
+		newMonthTracker.expenses = recurringExpenses
+		newMonthTracker.save()
+		// Ninth, adjust total cashflow in account document
+		const adjustTotalCashFlow = await adjustAccountTotalCashflow(req.user._id)
+
+		res.status(201).json({ monthTracker: newMonthTracker.toObject() })
+	}
+	catch(error) {
+		console.log('Error:', error)
+	}
 })
 
 // UPDATE -> PATCH /monthTrackers/5a7db6c74d55bc51bdf39793
