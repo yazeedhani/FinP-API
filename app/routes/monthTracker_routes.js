@@ -40,7 +40,8 @@ const adjustAccountTotalCashflow = async (userId) => {
 
 	try {
 		const userAccount = await Account.findOne({owner: userId}).populate('monthTrackers')
-	
+		console.log('userAccount in adjustAccounTotalCashflow()')
+		console.log('userAccount: ', userAccount)
 		userAccount.monthTrackers.forEach( monthTracker => {
 			console.log('monthTracker[i].monthly_cashflow', monthTracker.monthly_cashflow)
 			totalCashflow += monthTracker.monthly_cashflow
@@ -49,6 +50,7 @@ const adjustAccountTotalCashflow = async (userId) => {
 
 		userAccount.cashflow = totalCashflow
 		userAccount.save()
+		console.log('End of adjustAccounTotalCashflow()')
 		return totalCashflow	
 	}
 	catch(error) {
@@ -313,8 +315,9 @@ router.post('/monthTrackers', requireToken, async (req, res, next) => {
 		let monthTrackerId
 
 		// Find account for logged in user and populate monthTrackers
-		const loggedInUserAccount = await Account.findOne({owner: req.user._id}).populate('monthTrackers')
+		const loggedInUserAccount = await Account.findOne({owner: req.user._id})
 		console.log('loggedInUserAccount:', loggedInUserAccount)
+
 		// then set income and properties for req.body.monthTracker
 		income = loggedInUserAccount.income
 		req.body.monthTracker.owner = req.user._id
@@ -331,7 +334,7 @@ router.post('/monthTrackers', requireToken, async (req, res, next) => {
 		console.log('New Month Tracker: ', newMonthTracker)
 		// add new monthTracker to account
 		loggedInUserAccount.monthTrackers.push(monthTrackerId)
-
+		console.log('LoggedInUserAccount monthTrackers:', loggedInUserAccount.monthTrackers)
 		// Second, create the recurring Expense documents using insertMany() from the account.recurrences
 		const recurringExpenses = await Expense.insertMany(loggedInUserAccount.recurrences)
 
@@ -367,8 +370,7 @@ router.post('/monthTrackers', requireToken, async (req, res, next) => {
 		// Sixth, calculate monthly cashflow
 		newMonthTracker.monthly_cashflow = parseFloat(newMonthTracker.monthlyTakeHome) - parseFloat(newMonthTracker.totalExpenses)
 		// newMonthTracker.save()
-		console.log('UPDATED MONTHTRACKER: ', newMonthTracker)
-
+		
 		// Seventh, adjust total loans payments and savings for the account document
 		recurringExpenses.forEach( recurringExpense => {
 			if( recurringExpense.category === 'Loans' )
@@ -382,13 +384,16 @@ router.post('/monthTrackers', requireToken, async (req, res, next) => {
 				loggedInUserAccount.savings += recurringExpense.amount
 			}
 		})
-		loggedInUserAccount.save()
+		
+		await loggedInUserAccount.save()
 		// Eigth, add the expenses with the new monthTracker's ID to its expenses array in monthTracker
 		newMonthTracker.expenses = recurringExpenses
-		newMonthTracker.save()
+		await newMonthTracker.save()
+		console.log('UPDATED MONTHTRACKER: ', newMonthTracker)
 		// Ninth, adjust total cashflow in account document
+		console.log('Executing adjustTotalCashflow()')
 		const adjustTotalCashFlow = await adjustAccountTotalCashflow(req.user._id)
-
+		console.log('Executed adjustTotalCashflow()')
 		res.status(201).json({ monthTracker: newMonthTracker.toObject() })
 	}
 	catch(error) {
