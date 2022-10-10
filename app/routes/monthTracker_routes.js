@@ -336,54 +336,78 @@ router.post('/monthTrackers', requireToken, async (req, res, next) => {
 		loggedInUserAccount.monthTrackers.push(monthTrackerId)
 		console.log('LoggedInUserAccount monthTrackers:', loggedInUserAccount.monthTrackers)
 		// Second, create the recurring Expense documents using insertMany() from the account.recurrences
+		console.log('RECURRENCES LENGTH: ', loggedInUserAccount.recurrences.length)
 		const recurringExpenses = await Expense.insertMany(loggedInUserAccount.recurrences)
 
 		// Third, assign each recurring expense the new monthTrackerId
-		recurringExpenses.forEach( recurringExpense => {
-			recurringExpense.monthTracker = monthTracker._id
-			delete recurringExpense.recurringId
-			recurringExpense.save()
-		})
-		// Fourth, increment loan payments. monthlyTakeHome, and savings amounts for the month
-		recurringExpenses.forEach( recurringExpense => {
+		recurringExpenses.forEach( async (recurringExpense) => {
+			recurringExpense.monthTracker = monthTrackerId
+			delete recurringExpense.recurringId // NOT WORKING
+			// Fourth, increment loan payments. monthlyTakeHome, and savings amounts for the month
+			// and adjust total loans payments and savings for the account document
 			if( recurringExpense.category === 'Loans' )
 			{
 				newMonthTracker.monthly_loan_payments += recurringExpense.amount
+				loggedInUserAccount.loans -= recurringExpense.amount
 				// account.loans += expenses[i].amount
 			}
 			else if( recurringExpense.category === 'Savings' )
 			{
 				newMonthTracker.monthly_savings += recurringExpense.amount
+				loggedInUserAccount.savings += recurringExpense.amount
 			}
 			else if( recurringExpense.category === 'Income' )
 			{
 				newMonthTracker.monthlyTakeHome += recurringExpense.amount
 			}
-		})
-		// Fifth, calculate monthTracker.totalExpeses if there were any recurring expeneses, excluding expenses with an 'Income' category.
-		recurringExpenses.forEach( recurringExpense => {
+			// Fifth, calculate monthTracker.totalExpeses if there were any recurring expeneses, excluding expenses with an 'Income' category.
 			if( recurringExpense.category !== 'Income' )
 			{
 				newMonthTracker.totalExpenses += recurringExpense.amount
 			}
+			await recurringExpense.save()
+			console.log('RECURRING EXPENSE: ', recurringExpense)
 		})
+		// Fourth, increment loan payments. monthlyTakeHome, and savings amounts for the month
+		// recurringExpenses.forEach( recurringExpense => {
+		// 	if( recurringExpense.category === 'Loans' )
+		// 	{
+		// 		newMonthTracker.monthly_loan_payments += recurringExpense.amount
+		// 		// account.loans += expenses[i].amount
+		// 	}
+		// 	else if( recurringExpense.category === 'Savings' )
+		// 	{
+		// 		newMonthTracker.monthly_savings += recurringExpense.amount
+		// 	}
+		// 	else if( recurringExpense.category === 'Income' )
+		// 	{
+		// 		newMonthTracker.monthlyTakeHome += recurringExpense.amount
+		// 	}
+		// })
+		// Fifth, calculate monthTracker.totalExpeses if there were any recurring expeneses, excluding expenses with an 'Income' category.
+		// recurringExpenses.forEach( recurringExpense => {
+		// 	if( recurringExpense.category !== 'Income' )
+		// 	{
+		// 		newMonthTracker.totalExpenses += recurringExpense.amount
+		// 	}
+		// })
 		// Sixth, calculate monthly cashflow
 		newMonthTracker.monthly_cashflow = parseFloat(newMonthTracker.monthlyTakeHome) - parseFloat(newMonthTracker.totalExpenses)
 		// newMonthTracker.save()
 		
 		// Seventh, adjust total loans payments and savings for the account document
-		recurringExpenses.forEach( recurringExpense => {
-			if( recurringExpense.category === 'Loans' )
-			{
-				// monthTracker.monthly_loan_payments += expenses[i].amount
-				loggedInUserAccount.loans -= recurringExpense.amount
-			}
-			else if( recurringExpense.category === 'Savings' )
-			{
-				// monthTracker.monthly_savings += expenses[i].amount
-				loggedInUserAccount.savings += recurringExpense.amount
-			}
-		})
+		// recurringExpenses.forEach( recurringExpense => {
+		// 	if( recurringExpense.category === 'Loans' )
+		// 	{
+		// 		// monthTracker.monthly_loan_payments += expenses[i].amount
+		// 		loggedInUserAccount.loans -= recurringExpense.amount
+		// 	}
+		// 	else if( recurringExpense.category === 'Savings' )
+		// 	{
+		// 		// monthTracker.monthly_savings += expenses[i].amount
+		// 		loggedInUserAccount.savings += recurringExpense.amount
+		// 	}
+		// })
 		
 		await loggedInUserAccount.save()
 		// Eigth, add the expenses with the new monthTracker's ID to its expenses array in monthTracker
@@ -483,36 +507,60 @@ router.patch('/monthTrackers/:id', requireToken, removeBlanks, async (req, res, 
 // MonthTracker will also be removed from monthTrackers array in account document
 // Adjust total cashflow in account document
 // Get the total of savings and loans for each monthTracker to be deleted
-router.delete('/monthTrackers/:monthTrackerId', requireToken, (req, res, next) => {
+router.delete('/monthTrackers/:monthTrackerId', requireToken, async (req, res, next) => {
 	const owner = req.user._id
 	const monthTrackerId = req.params.monthTrackerId
 
-	MonthTracker.findById(monthTrackerId)
-		.then(handle404)
-		.then((monthTracker) => {
-			// throw an error if current user doesn't own `monthTracker`
-			requireOwnership(req, monthTracker)
-			// Adjust total savings and total loan repayments in user's account
-			Account.findOne({owner: owner})
-				.then( account => {
-					account.savings -= monthTracker.monthly_savings
-					account.loans += monthTracker.monthly_loan_payments
-					account.monthTrackers.splice(account.monthTrackers.indexOf(monthTrackerId), 1)
-					return account.save()
-				})
-			// delete the monthTracker ONLY IF the above didn't throw
-			monthTracker.deleteOne()
-		})
+	// MonthTracker.findById(monthTrackerId)
+	// 	.then(handle404)
+	// 	.then((monthTracker) => {
+	// 		// throw an error if current user doesn't own `monthTracker`
+	// 		requireOwnership(req, monthTracker)
+	// 		// Adjust total savings and total loan repayments in user's account
+	// 		Account.findOne({owner: owner})
+	// 			.then( account => {
+	// 				account.savings -= monthTracker.monthly_savings
+	// 				account.loans += monthTracker.monthly_loan_payments
+	// 				account.monthTrackers.splice(account.monthTrackers.indexOf(monthTrackerId), 1)
+	// 				return account.save()
+	// 			})
+	// 		// delete the monthTracker ONLY IF the above didn't throw
+	// 		monthTracker.deleteOne()
+	// 	})
+	// 	// Delete all expenses for the monthTracker
+	// 	.then( () => Expense.deleteMany({monthTracker: monthTrackerId}))
+	// 	// Adjust total cashflow in account document
+	// 	.then( () => {
+	// 		adjustAccountTotalCashflow(req.user._id, next)
+	// 	})
+	// 	// send back 204 and no content if the deletion succeeded
+	// 	.then(() => res.sendStatus(204))
+	// 	// if an error occurs, pass it to the handler
+	// 	.catch(next)
+	
+	try {
+		const monthTracker = await MonthTracker.findById(monthTrackerId)
+		// throw an error if current user doesn't own `monthTracker`
+		requireOwnership(req, monthTracker)
+		// Adjust total savings and total loan repayments in user's account
+		const userAccount = await Account.findOne({owner: owner})
+		userAccount.savings -= monthTracker.monthly_savings
+		userAccount.loans += monthTracker.monthly_loan_payments
+		// Remove monthTracker from account
+		userAccount.monthTrackers.splice(userAccount.monthTrackers.indexOf(monthTrackerId), 1)
+		await userAccount.save()
+		// delete the monthTracker ONLY IF the above didn't throw
+		await monthTracker.deleteOne()
 		// Delete all expenses for the monthTracker
-		.then( () => Expense.deleteMany({monthTracker: monthTrackerId}))
+		await Expense.deleteMany({monthTracker: monthTrackerId})
 		// Adjust total cashflow in account document
-		.then( () => {
-			adjustAccountTotalCashflow(req.user._id, next)
-		})
+		await adjustAccountTotalCashflow(req.user._id, next)
 		// send back 204 and no content if the deletion succeeded
-		.then(() => res.sendStatus(204))
-		// if an error occurs, pass it to the handler
-		.catch(next)
+		res.sendStatus(204)
+	}
+	catch(error) {
+		console.log('Error:', error)
+	}
 })
 
 /******************* EXPENSES ***********************/
