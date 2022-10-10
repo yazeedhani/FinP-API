@@ -402,47 +402,81 @@ router.post('/monthTrackers', requireToken, async (req, res, next) => {
 })
 
 // UPDATE -> PATCH /monthTrackers/5a7db6c74d55bc51bdf39793
-router.patch('/monthTrackers/:id', requireToken, removeBlanks, (req, res, next) => {
+router.patch('/monthTrackers/:id', requireToken, removeBlanks, async (req, res, next) => {
 	// if the client attempts to change the `owner` property by including a new
 	// owner, prevent that by deleting that key/value pair
 	delete req.body.monthTracker.owner
 
-	MonthTracker.findById(req.params.id)
-		.populate('expenses')
-		.then(handle404)
-		.then((monthTracker) => {
-			// pass the `req` object and the Mongoose record to `requireOwnership`
-			// it will throw an error if the current user isn't the owner
-			requireOwnership(req, monthTracker)
-			console.log('req.body.monthtracker: ', req.body.monthTracker)
-			console.log('Month Tracker: ', monthTracker)
+	// MonthTracker.findById(req.params.id)
+	// 	.populate('expenses')
+	// 	.then(handle404)
+	// 	.then((monthTracker) => {
+	// 		// pass the `req` object and the Mongoose record to `requireOwnership`
+	// 		// it will throw an error if the current user isn't the owner
+	// 		requireOwnership(req, monthTracker)
+	// 		console.log('req.body.monthtracker: ', req.body.monthTracker)
+	// 		console.log('Month Tracker: ', monthTracker)
 
-			// Find all transactions with category 'Income' to add it to monthlyTakehome
-			let extraIncome = 0
-			monthTracker.expenses.forEach( expense => {
-				if( expense.category === 'Income' )
-				{
-					console.log('EXPENSE: ', expense)
-					extraIncome += expense.amount
-				}
-			})
+	// 		// Find all transactions with category 'Income' to add it to monthlyTakehome
+	// 		let extraIncome = 0
+	// 		monthTracker.expenses.forEach( expense => {
+	// 			if( expense.category === 'Income' )
+	// 			{
+	// 				console.log('EXPENSE: ', expense)
+	// 				extraIncome += expense.amount
+	// 			}
+	// 		})
 
-			// Recalculate total monthlyTakeHome
-			req.body.monthTracker.monthlyTakeHome = (req.body.monthTracker.annualTakeHome / 12) + extraIncome
+	// 		// Recalculate total monthlyTakeHome
+	// 		req.body.monthTracker.monthlyTakeHome = (req.body.monthTracker.annualTakeHome / 12) + extraIncome
 
-			// pass the result of Mongoose's `.update` to the next `.then`
-			// Recalculate cashflow
-			req.body.monthTracker.monthly_cashflow = req.body.monthTracker.monthlyTakeHome - monthTracker.totalExpenses
-			return monthTracker.updateOne(req.body.monthTracker)
+	// 		// pass the result of Mongoose's `.update` to the next `.then`
+	// 		// Recalculate cashflow
+	// 		req.body.monthTracker.monthly_cashflow = req.body.monthTracker.monthlyTakeHome - monthTracker.totalExpenses
+	// 		return monthTracker.updateOne(req.body.monthTracker)
+	// 	})
+	// 	// Adjust total cashflow in account document
+	// 	.then( () => {
+	// 		adjustAccountTotalCashflow(req.user._id, next)
+	// 	})
+	// 	// if that succeeded, return 204 and no JSON
+	// 	.then(() => res.sendStatus(204))
+	// 	// if an error occurs, pass it to the handler
+	// 	.catch(next)
+
+	try {
+		const monthTrackerId = req.params.id
+	
+		const monthTracker = await MonthTracker.findById(monthTrackerId).populate('expenses')
+		// create a function that handles 404s
+		// pass the `req` object and the Mongoose record to `requireOwnership`
+		// it will throw an error if the current user isn't the owner
+		requireOwnership(req, monthTracker)
+		// Find all transactions with category 'Income' to add it to monthlyTakehome
+		let extraIncome = 0
+		monthTracker.expenses.forEach( expense => {
+			if( expense.category === 'Income' )
+			{
+				console.log('EXPENSE: ', expense)
+				extraIncome += expense.amount
+			}
 		})
+		// Recalculate total monthlyTakeHome
+		req.body.monthTracker.monthlyTakeHome = (req.body.monthTracker.annualTakeHome / 12) + extraIncome
+
+		// pass the result of Mongoose's `.update` to the next `.then`
+		// Recalculate cashflow
+		req.body.monthTracker.monthly_cashflow = req.body.monthTracker.monthlyTakeHome - monthTracker.totalExpenses
+		// Update monthTracker
+		await monthTracker.updateOne(req.body.monthTracker)
 		// Adjust total cashflow in account document
-		.then( () => {
-			adjustAccountTotalCashflow(req.user._id, next)
-		})
-		// if that succeeded, return 204 and no JSON
-		.then(() => res.sendStatus(204))
-		// if an error occurs, pass it to the handler
-		.catch(next)
+		await adjustAccountTotalCashflow(req.user._id, next)
+
+		res.sendStatus(204)
+	}
+	catch(error) {
+		console.log('Error:', error)
+	}
 })
 
 // DESTROY -> DELETE /monthTrackers/5a7db6c74d55bc51bdf39793 - deletes a monthTracker along with all of its expenses
