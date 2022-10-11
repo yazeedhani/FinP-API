@@ -590,7 +590,7 @@ router.get('/monthTrackers/:monthTrackerId/expenses', requireToken, async (req, 
 		const monthTracker = await MonthTracker.findById(monthTrackerId).populate('expenses')
 
 		requireOwnership(req, monthTracker)
-		res.status(200).json({ expenses: monthTracker. expenses.toObject() })
+		res.status(200).json({ expenses: monthTracker.expenses.toObject() })
 	}
 	catch(error) {
 		console.log('Error:', error)
@@ -623,100 +623,150 @@ router.get('/monthTrackers/:monthTrackerId/:expenseId', requireToken, async (req
 // CREATE -> POST /monthTrackers/:monthTrackerId/expenses 
 // - to create a new expense add it to the expenses array in the current monthTracker document
 router.post('/monthTrackers/:monthTrackerId/expense', requireToken, async (req, res, next) => {
-	const monthTrackerId = req.params.monthTrackerId
-	req.body.expense.owner = req.user._id
-	req.body.expense.monthTracker = monthTrackerId
-	req.body.expense.amount = parseFloat(req.body.expense.amount)
+	// const monthTrackerId = req.params.monthTrackerId
+	// req.body.expense.owner = req.user._id
+	// req.body.expense.monthTracker = monthTrackerId
+	// req.body.expense.amount = parseFloat(req.body.expense.amount)
 
-	console.log('REQ.BODY.EXPENSEL ', req.body.expense)
-	// Create the expense
-	Expense.create(req.body.expense)
-		.then( expense => {
-				// requireOwnership(req, expense)
-				// Add the new expense to the expenses array in the current monthTracker
-				MonthTracker.findById(monthTrackerId)
-					.populate('expenses')
-					.then( monthTracker => {
-						console.log('MONTRACKER IN CREATE ROUTE: ', monthTracker)
-						monthTracker.expenses.push(expense)
-						// If category is 'Savings', add amount to monthly savings and total savings in account
-						if(expense.category === 'Savings')
-						{
-							monthTracker.monthly_savings += expense.amount
-							Account.findOne({owner: req.user._id})
-								.then( (account) => {
-									account.savings += expense.amount
-									return account.save()
-								})
-								.catch(next)
-						}
-						// If category is 'Loans', add amount to monthly savings and subtract from total loans in account
-						else if(expense.category === 'Loans')
-						{
-							monthTracker.monthly_loan_payments += expense.amount
-							Account.findOne({owner: req.user._id})
-								.then( (account) => {
-									account.loans -= expense.amount
-									return account.save()
-								})
-								.catch(next)
-						}
-						// If category is 'Income', add amount to monthly income
-						else if(expense.category === 'Income')
-						{
-							monthTracker.monthlyTakeHome += expense.amount
-						}
-						// Adjust monthly cashflow and totalExpenses
-						// If category is 'Income', do not add amount to total expenses
-						if(expense.category !== 'Income')
-						{
-							monthTracker.totalExpenses += expense.amount
-						}
-						monthTracker.monthly_cashflow = parseFloat(monthTracker.monthlyTakeHome) - parseFloat(monthTracker.totalExpenses)
-						monthTracker.save()
-						return expense
-					})
-					.catch(next)
-				// return expense object after it is added to its monthTracker expenses array
-				return expense
-			})
-		.then( expense => {
-			if(expense.recurring)
-			{
-				Account.findOne({owner: req.user._id})
-					.then( account => {
-						delete req.body.expense.monthTracker
-						// Anytime you create a recurring expense assign it a custom field and random number - called it recurringID
-						req.body.expense.recurringId = Math.floor(Math.random() * 1000000).toString() + req.body.expense.name 
-						account.recurrences.push(req.body.expense)
-						return account.save()
-					})
-					.catch(next)
-			}
-			return expense
-		})
-		// Adjust total cashflow in account document
-		.then( expense => {
-			adjustAccountTotalCashflow(req.user._id, next)
+	// console.log('REQ.BODY.EXPENSEL ', req.body.expense)
+	// // Create the expense
+	// Expense.create(req.body.expense)
+	// 	.then( expense => {
+	// 			// requireOwnership(req, expense)
+	// 			// Add the new expense to the expenses array in the current monthTracker
+	// 			MonthTracker.findById(monthTrackerId)
+	// 				.populate('expenses')
+	// 				.then( monthTracker => {
+	// 					console.log('MONTRACKER IN CREATE ROUTE: ', monthTracker)
+	// 					monthTracker.expenses.push(expense)
+	// 					// If category is 'Savings', add amount to monthly savings and total savings in account
+	// 					if(expense.category === 'Savings')
+	// 					{
+	// 						monthTracker.monthly_savings += expense.amount
+	// 						Account.findOne({owner: req.user._id})
+	// 							.then( (account) => {
+	// 								account.savings += expense.amount
+	// 								return account.save()
+	// 							})
+	// 							.catch(next)
+	// 					}
+	// 					// If category is 'Loans', add amount to monthly savings and subtract from total loans in account
+	// 					else if(expense.category === 'Loans')
+	// 					{
+	// 						monthTracker.monthly_loan_payments += expense.amount
+	// 						Account.findOne({owner: req.user._id})
+	// 							.then( (account) => {
+	// 								account.loans -= expense.amount
+	// 								return account.save()
+	// 							})
+	// 							.catch(next)
+	// 					}
+	// 					// If category is 'Income', add amount to monthly income
+	// 					else if(expense.category === 'Income')
+	// 					{
+	// 						monthTracker.monthlyTakeHome += expense.amount
+	// 					}
+	// 					// Adjust monthly cashflow and totalExpenses
+	// 					// If category is 'Income', do not add amount to total expenses
+	// 					if(expense.category !== 'Income')
+	// 					{
+	// 						monthTracker.totalExpenses += expense.amount
+	// 					}
+	// 					monthTracker.monthly_cashflow = parseFloat(monthTracker.monthlyTakeHome) - parseFloat(monthTracker.totalExpenses)
+	// 					monthTracker.save()
+	// 					return expense
+	// 				})
+	// 				.catch(next)
+	// 			// return expense object after it is added to its monthTracker expenses array
+	// 			return expense
+	// 		})
+	// 	.then( expense => {
+	// 		if(expense.recurring)
+	// 		{
+	// 			Account.findOne({owner: req.user._id})
+	// 				.then( account => {
+	// 					delete req.body.expense.monthTracker
+	// 					// Anytime you create a recurring expense assign it a custom field and random number - called it recurringID
+	// 					req.body.expense.recurringId = Math.floor(Math.random() * 1000000).toString() + req.body.expense.name 
+	// 					account.recurrences.push(req.body.expense)
+	// 					return account.save()
+	// 				})
+	// 				.catch(next)
+	// 		}
+	// 		return expense
+	// 	})
+	// 	// Adjust total cashflow in account document
+	// 	.then( expense => {
+	// 		adjustAccountTotalCashflow(req.user._id, next)
 			
-			return expense
-		})
-		.then( (expense) => res.status(201).json({ expense: expense.toObject() }) )
-		.catch(next)
+	// 		return expense
+	// 	})
+	// 	.then( (expense) => res.status(201).json({ expense: expense.toObject() }) )
+	// 	.catch(next)
 	
-	// try {
-	// 	const monthTrackerId = req.params.monthTrackerId
-	// 	req.body.expense.owner = req.user._id
-	// 	req.body.expense.monthTracker = monthTrackerId
-	// 	req.body.expense.amount = parseFloat(req.body.expense.amount)
+	try {
+		const monthTrackerId = req.params.monthTrackerId
+		req.body.expense.owner = req.user._id
+		req.body.expense.monthTracker = monthTrackerId
+		req.body.expense.amount = parseFloat(req.body.expense.amount)
 
-	// 	console.log('REQ.BODY.EXPENSEL ', req.body.expense)
+		console.log('REQ.BODY.EXPENSEL ', req.body.expense)
 
+		// Create the new expense
+		const newExpense = await Expense.create(req.body.expense)
 
-	// }
-	// catch(error) {
-	// 	console.log('Error:', error)
-	// }
+		// Add new expense to monthTracker
+		const monthTracker = await MonthTracker.findById(monthTrackerId)
+		console.log('MONTRACKER IN CREATE ROUTE: ', monthTracker)
+		monthTracker.expenses.push(newExpense)
+
+		// If category is 'Savings', add amount to monthly savings and total savings in account
+		const userAccount = await Account.findOne({owner: req.user._id})
+		if(newExpense.category === 'Savings')
+		{
+			monthTracker.monthly_savings += newExpense.amount
+			// const userAccount = await Account.findOne({owner: req.user._id})
+			userAccount.savings += newExpense.amount
+			// await userAccount.save()
+		}
+		// If category is 'Loans', add amount to monthly savings and subtract from total loans in account
+		else if(newExpense.category === 'Loans')
+		{
+			monthTracker.monthly_loan_payments += newExpense.amount
+			// const userAccount = await Account.findOne({owner: req.user._id})
+			userAccount.loans -= newExpense.amount
+			// await userAccount.save()
+		}
+		// If category is 'Income', add amount to monthly income
+		else if(newExpense.category === 'Income')
+		{
+			monthTracker.monthlyTakeHome += newExpense.amount
+		}
+		// Adjust monthly cashflow and totalExpenses
+		// If category is 'Income', do not add amount to total expenses
+		if(newExpense.category !== 'Income')
+		{
+			monthTracker.totalExpenses += newExpense.amount
+		}
+		monthTracker.monthly_cashflow = parseFloat(monthTracker.monthlyTakeHome) - parseFloat(monthTracker.totalExpenses)
+		await monthTracker.save()
+		
+		if(newExpense.recurring)
+		{	
+			delete req.body.expense.monthTracker
+			// Anytime you create a recurring expense assign it a custom field and random number - called it recurringID
+			req.body.expense.recurringId = Math.floor(Math.random() * 1000000).toString() + req.body.expense.name 
+			userAccount.recurrences.push(req.body.expense)
+		}
+		await userAccount.save()
+
+		await adjustAccountTotalCashflow(req.user._id, next)
+
+		res.status(201).json({ expense: newExpense.toObject() })
+	}
+	catch(error) {
+		console.log('Error:', error)
+	}
 })
 
 // UPDATE/PATCH -> PATCH /monthTrackers/:monthTrackerID/:expenseId - to edit a single expense for a monthTracker
