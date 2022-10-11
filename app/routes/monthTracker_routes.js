@@ -567,35 +567,57 @@ router.delete('/monthTrackers/:monthTrackerId', requireToken, async (req, res, n
 
 // INDEX -> GET /monthTrackers/:monthTrackerId/expenses - to display expenses array in a monthTracker
 router.get('/monthTrackers/:monthTrackerId/expenses', requireToken, async (req, res, next) => {
-    const monthTrackerId = req.params.monthTrackerId
+    // const monthTrackerId = req.params.monthTrackerId
 
-    await MonthTracker.findById(monthTrackerId)
-		.populate('expenses')
-		.then(handle404)
-		.then( (monthTracker) => {
-			requireOwnership(req, monthTracker)
-			for(let i = 0; i <= 10; i++){
-				console.log(i)
-			}
-			return monthTracker.expenses
-		})
-		.then( (expenses) => {
-			console.log('11')
-			res.status(200).json({ expenses: expenses.toObject() }) })
-        .catch(next)
+    // await MonthTracker.findById(monthTrackerId)
+	// 	.populate('expenses')
+	// 	.then(handle404)
+	// 	.then( (monthTracker) => {
+	// 		requireOwnership(req, monthTracker)
+	// 		for(let i = 0; i <= 10; i++){
+	// 			console.log(i)
+	// 		}
+	// 		return monthTracker.expenses
+	// 	})
+	// 	.then( (expenses) => {
+	// 		console.log('11')
+	// 		res.status(200).json({ expenses: expenses.toObject() }) })
+    //     .catch(next)
+	
+	try {
+		const monthTrackerId = req.params.monthTrackerId
+
+		const monthTracker = await MonthTracker.findById(monthTrackerId).populate('expenses')
+
+		requireOwnership(req, monthTracker)
+		res.status(200).json({ expenses: monthTracker. expenses.toObject() })
+	}
+	catch(error) {
+		console.log('Error:', error)
+	}
 })
 
 // SHOW -> GET /monthTrackers/:monthTrackerID/:expenseId - to display a single expense for a monthTracker
 router.get('/monthTrackers/:monthTrackerId/:expenseId', requireToken, async (req, res, next) => {
-	const expenseId = req.params.expenseId
+	// const expenseId = req.params.expenseId
 
-	await Expense.findById(expenseId)
-		.then(handle404)
-		.then( expense => {
-			requireOwnership(req, expense)
-			res.status(200).json({ expense: expense.toObject()})
-		})
-		.catch(next)
+	// await Expense.findById(expenseId)
+	// 	.then(handle404)
+	// 	.then( expense => {
+	// 		requireOwnership(req, expense)
+	// 		res.status(200).json({ expense: expense.toObject()})
+	// 	})
+	// 	.catch(next)
+	
+	try {
+		const expenseId = req.params.expenseId
+		const expense = await Expense.findById(expenseId)
+		requireOwnership(req, expense)
+		res.status(200).json({ expense: expense.toObject()})
+	}
+	catch(error) {
+		console.log('Error:', error)
+	}
 })
 
 // CREATE -> POST /monthTrackers/:monthTrackerId/expenses 
@@ -681,6 +703,20 @@ router.post('/monthTrackers/:monthTrackerId/expense', requireToken, async (req, 
 		})
 		.then( (expense) => res.status(201).json({ expense: expense.toObject() }) )
 		.catch(next)
+	
+	// try {
+	// 	const monthTrackerId = req.params.monthTrackerId
+	// 	req.body.expense.owner = req.user._id
+	// 	req.body.expense.monthTracker = monthTrackerId
+	// 	req.body.expense.amount = parseFloat(req.body.expense.amount)
+
+	// 	console.log('REQ.BODY.EXPENSEL ', req.body.expense)
+
+
+	// }
+	// catch(error) {
+	// 	console.log('Error:', error)
+	// }
 })
 
 // UPDATE/PATCH -> PATCH /monthTrackers/:monthTrackerID/:expenseId - to edit a single expense for a monthTracker
