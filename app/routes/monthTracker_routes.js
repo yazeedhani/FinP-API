@@ -710,14 +710,11 @@ router.post('/monthTrackers/:monthTrackerId/expense', requireToken, async (req, 
 		req.body.expense.monthTracker = monthTrackerId
 		req.body.expense.amount = parseFloat(req.body.expense.amount)
 
-		console.log('REQ.BODY.EXPENSEL ', req.body.expense)
-
 		// Create the new expense
 		const newExpense = await Expense.create(req.body.expense)
 
 		// Add new expense to monthTracker
 		const monthTracker = await MonthTracker.findById(monthTrackerId)
-		console.log('MONTRACKER IN CREATE ROUTE: ', monthTracker)
 		monthTracker.expenses.push(newExpense)
 
 		// If category is 'Savings', add amount to monthly savings and total savings in account
@@ -725,23 +722,20 @@ router.post('/monthTrackers/:monthTrackerId/expense', requireToken, async (req, 
 		if(newExpense.category === 'Savings')
 		{
 			monthTracker.monthly_savings += newExpense.amount
-			// const userAccount = await Account.findOne({owner: req.user._id})
 			userAccount.savings += newExpense.amount
-			// await userAccount.save()
 		}
 		// If category is 'Loans', add amount to monthly savings and subtract from total loans in account
 		else if(newExpense.category === 'Loans')
 		{
 			monthTracker.monthly_loan_payments += newExpense.amount
-			// const userAccount = await Account.findOne({owner: req.user._id})
 			userAccount.loans -= newExpense.amount
-			// await userAccount.save()
 		}
 		// If category is 'Income', add amount to monthly income
 		else if(newExpense.category === 'Income')
 		{
 			monthTracker.monthlyTakeHome += newExpense.amount
 		}
+
 		// Adjust monthly cashflow and totalExpenses
 		// If category is 'Income', do not add amount to total expenses
 		if(newExpense.category !== 'Income')
@@ -772,322 +766,523 @@ router.post('/monthTrackers/:monthTrackerId/expense', requireToken, async (req, 
 // UPDATE/PATCH -> PATCH /monthTrackers/:monthTrackerID/:expenseId - to edit a single expense for a monthTracker
 // If expense is in the Savings or Loans category, then update the savings or loans in the monthTracker and accounts documents to reflect the change
 // Monthly cashflow will be adjusted
-router.patch('/monthTrackers/:monthTrackerId/:expenseId', requireToken, removeBlanks, (req, res, next) => {
-	const monthTrackerId = req.params.monthTrackerId
-	const expenseId = req.params.expenseId
+router.patch('/monthTrackers/:monthTrackerId/:expenseId', requireToken, removeBlanks, async (req, res, next) => {
+	// const monthTrackerId = req.params.monthTrackerId
+	// const expenseId = req.params.expenseId
 
-	delete req.body.expense.owner
+	// delete req.body.expense.owner
 
-	Expense.findById(expenseId)
-		.then(handle404)
-		.then( (expense) => {
-			requireOwnership(req, expense)
-			// console.log('EXPENSE RECURRING: ', expense.recurring)
-			// console.log('RED.BODY.EXPENSE.RECURRING: ', req.body.expense.recurring)
-			// console.log('req.body.expense.category: ', req.body.expense.category )
-			// console.log('req.body.expense.category: ', req.body.expense.category === 'Savings')
-			// console.log('expense.category: ', expense.category)
-			// console.log('expense.category: ', expense.category === 'Savings')
-			// console.log(req.body.expense.category === 'Savings' || expense.category === 'Savings')
+	// Expense.findById(expenseId)
+	// 	.then(handle404)
+	// 	.then( (expense) => {
+	// 		requireOwnership(req, expense)
+	// 		// console.log('EXPENSE RECURRING: ', expense.recurring)
+	// 		// console.log('RED.BODY.EXPENSE.RECURRING: ', req.body.expense.recurring)
+	// 		// console.log('req.body.expense.category: ', req.body.expense.category )
+	// 		// console.log('req.body.expense.category: ', req.body.expense.category === 'Savings')
+	// 		// console.log('expense.category: ', expense.category)
+	// 		// console.log('expense.category: ', expense.category === 'Savings')
+	// 		// console.log(req.body.expense.category === 'Savings' || expense.category === 'Savings')
 
-			// To edit an expense that is changing its category from Savings to another category, except Loans
-			if(expense.category === 'Savings' && req.body.expense.category !== 'Savings' && req.body.expense.category !== 'Loans')
-			{
-				console.log('ONE')
-				updateMonthTracker_TakeHome = MonthTracker.findById(monthTrackerId)
-					.populate('expenses')
-					.then( monthTracker => {
-						Account.findOne({owner: req.user._id})
-							.then( account => {
-								// Update total savings
-								return account.updateOne({ savings: account.savings - parseFloat(expense.amount)})
-							})
-							.catch(next)
+	// 		// To edit an expense that is changing its category from Savings to another category, except Loans
+	// 		if(expense.category === 'Savings' && req.body.expense.category !== 'Savings' && req.body.expense.category !== 'Loans')
+	// 		{
+	// 			console.log('ONE')
+	// 			updateMonthTracker_TakeHome = MonthTracker.findById(monthTrackerId)
+	// 				.populate('expenses')
+	// 				.then( monthTracker => {
+	// 					Account.findOne({owner: req.user._id})
+	// 						.then( account => {
+	// 							// Update total savings
+	// 							return account.updateOne({ savings: account.savings - parseFloat(expense.amount)})
+	// 						})
+	// 						.catch(next)
 						
-						// If req.body.expense.category is 'Income'
-						if(req.body.expense.category === 'Income')
-						{
-							// Update monthlyTakeHome
-							monthTracker.monthlyTakeHome += parseFloat(req.body.expense.amount)
-							monthTracker.save()
-						}						
-						// Update savings for month tracker
-						console.log('EXPENSE.AMOUNT: ', expense.amount)	
-						return monthTracker.updateOne({monthly_savings: monthTracker.monthly_savings - parseFloat(expense.amount)}) 
-					})
-					.catch(next)
-			}
-			// To edit an expense that is changing its category from Loans to another category, except Savings
-			else if(expense.category === 'Loans' && req.body.expense.category !== 'Loans' && req.body.expense.category !== 'Savings')
-			{
-				console.log('TWO')
-				MonthTracker.findById(monthTrackerId)
-					.then( monthTracker => {
-						Account.findOne({owner: req.user._id})
-							.then( account => {
-								return account.updateOne({ loans: account.loans + parseFloat(expense.amount)})
-							})
-							.catch(next)
+	// 					// If req.body.expense.category is 'Income'
+	// 					if(req.body.expense.category === 'Income')
+	// 					{
+	// 						// Update monthlyTakeHome
+	// 						monthTracker.monthlyTakeHome += parseFloat(req.body.expense.amount)
+	// 						monthTracker.save()
+	// 					}						
+	// 					// Update savings for month tracker
+	// 					console.log('EXPENSE.AMOUNT: ', expense.amount)	
+	// 					return monthTracker.updateOne({monthly_savings: monthTracker.monthly_savings - parseFloat(expense.amount)}) 
+	// 				})
+	// 				.catch(next)
+	// 		}
+	// 		// To edit an expense that is changing its category from Loans to another category, except Savings
+	// 		else if(expense.category === 'Loans' && req.body.expense.category !== 'Loans' && req.body.expense.category !== 'Savings')
+	// 		{
+	// 			console.log('TWO')
+	// 			MonthTracker.findById(monthTrackerId)
+	// 				.then( monthTracker => {
+	// 					Account.findOne({owner: req.user._id})
+	// 						.then( account => {
+	// 							return account.updateOne({ loans: account.loans + parseFloat(expense.amount)})
+	// 						})
+	// 						.catch(next)
 
-						// If req.body.expense.category is 'Income'
-						if(req.body.expense.category === 'Income')
-						{
-							// Update monthlyTakeHome
-							monthTracker.monthlyTakeHome += parseFloat(req.body.expense.amount)
-							monthTracker.save()
-						}
-						// Update loan payments for month tracker
-						return monthTracker.updateOne({monthly_loan_payments: monthTracker.monthly_loan_payments - parseFloat(expense.amount)}) 
-					})
-					.catch(next)
-			}
-			// To edit an expense that is changing its category to Savings, (The previos category cannot be Loans)
-			else if(expense.category !== 'Savings' && req.body.expense.category === 'Savings' && expense.category !== 'Loans')
-			{
-				console.log('THREE')
-				MonthTracker.findById(monthTrackerId)
-					.then( monthTracker => {
-						Account.findOne({owner: req.user._id})
-							.then( account => {
-								return account.updateOne({ savings: account.savings + parseFloat(req.body.expense.amount)})
-							})
-							.catch(next)
+	// 					// If req.body.expense.category is 'Income'
+	// 					if(req.body.expense.category === 'Income')
+	// 					{
+	// 						// Update monthlyTakeHome
+	// 						monthTracker.monthlyTakeHome += parseFloat(req.body.expense.amount)
+	// 						monthTracker.save()
+	// 					}
+	// 					// Update loan payments for month tracker
+	// 					return monthTracker.updateOne({monthly_loan_payments: monthTracker.monthly_loan_payments - parseFloat(expense.amount)}) 
+	// 				})
+	// 				.catch(next)
+	// 		}
+	// 		// To edit an expense that is changing its category to Savings, (The previos category cannot be Loans)
+	// 		else if(expense.category !== 'Savings' && req.body.expense.category === 'Savings' && expense.category !== 'Loans')
+	// 		{
+	// 			console.log('THREE')
+	// 			MonthTracker.findById(monthTrackerId)
+	// 				.then( monthTracker => {
+	// 					Account.findOne({owner: req.user._id})
+	// 						.then( account => {
+	// 							return account.updateOne({ savings: account.savings + parseFloat(req.body.expense.amount)})
+	// 						})
+	// 						.catch(next)
 
-						// If expense.category is 'Income'
-						if(expense.category === 'Income')
-						{
-							// Update monthlyTakeHome
-							monthTracker.monthlyTakeHome -= parseFloat(expense.amount)
-							console.log('MONTHLY TAKEHOME UPDATED: ', monthTracker.monthlyTakeHome, expense.amount)
-							monthTracker.save()
-						}
-						// Update savings for month tracker
-						return monthTracker.updateOne({monthly_savings: monthTracker.monthly_savings + parseFloat(req.body.expense.amount)}) 
-					})
-					.catch(next)
-			}
-			// To edit an expense that is changing its category to Loans, (The previos category cannot be Savings)
-			else if(expense.category !== 'Loans' && req.body.expense.category === 'Loans' && expense.category !== 'Savings')
-			{
-				console.log('FOUR')
-				MonthTracker.findById(monthTrackerId)
-					.then( monthTracker => {
-						Account.findOne({owner: req.user._id})
-							.then( account => {
-								return account.updateOne({ loans: account.loans - parseFloat(req.body.expense.amount)})
-							})
-							.catch(next)
+	// 					// If expense.category is 'Income'
+	// 					if(expense.category === 'Income')
+	// 					{
+	// 						// Update monthlyTakeHome
+	// 						monthTracker.monthlyTakeHome -= parseFloat(expense.amount)
+	// 						console.log('MONTHLY TAKEHOME UPDATED: ', monthTracker.monthlyTakeHome, expense.amount)
+	// 						monthTracker.save()
+	// 					}
+	// 					// Update savings for month tracker
+	// 					return monthTracker.updateOne({monthly_savings: monthTracker.monthly_savings + parseFloat(req.body.expense.amount)}) 
+	// 				})
+	// 				.catch(next)
+	// 		}
+	// 		// To edit an expense that is changing its category to Loans, (The previos category cannot be Savings)
+	// 		else if(expense.category !== 'Loans' && req.body.expense.category === 'Loans' && expense.category !== 'Savings')
+	// 		{
+	// 			console.log('FOUR')
+	// 			MonthTracker.findById(monthTrackerId)
+	// 				.then( monthTracker => {
+	// 					Account.findOne({owner: req.user._id})
+	// 						.then( account => {
+	// 							return account.updateOne({ loans: account.loans - parseFloat(req.body.expense.amount)})
+	// 						})
+	// 						.catch(next)
 						
-						// If expense.category is 'Income'
-						if(expense.category === 'Income')
-						{
-							// Update monthlyTakeHome
-							monthTracker.monthlyTakeHome -= parseFloat(expense.amount)
-							monthTracker.save()
-						}
-						// Update loans for month tracker
-						return monthTracker.updateOne({monthly_loan_payments: monthTracker.monthly_loan_payments + parseFloat(req.body.expense.amount)}) 
-					})
-					.catch(next)
-			}
-			// To edit an expense that is changing its category from Savings to Loans
-			else if(expense.category === 'Savings' && req.body.expense.category === 'Loans')
-			{
-				console.log('FIVE')
-				console.log('SAVINGS TO LOANS')
-				MonthTracker.findById(monthTrackerId)
-					.then( monthTracker => {
-						Account.findOne({owner: req.user._id})
-							.then( account => {
-								account.loans -= parseFloat(req.body.expense.amount)
-								account.savings -= parseFloat(expense.amount)
-								return account.save()
-							})
-							.catch(next)
-						monthTracker.monthly_loan_payments += parseFloat(req.body.expense.amount)
-						monthTracker.monthly_savings -= parseFloat(expense.amount)
-						return monthTracker.save()
-					})
-					.catch(next)
-			}
-			// To edit an expense that is changing its category from Loans to Savings
-			else if(expense.category === 'Loans' && req.body.expense.category === 'Savings')
-			{
-				console.log('SIX')
-				console.log('LOANS TO SAVINGS')
-				MonthTracker.findById(monthTrackerId)
-					.then( monthTracker => {
-						Account.findOne({owner: req.user._id})
-							.then( account => {
-								account.loans += parseFloat(expense.amount)
-								account.savings += parseFloat(req.body.expense.amount)
-								return account.save()
-							})
-							.catch(next)
-						monthTracker.monthly_loan_payments -= parseFloat(expense.amount)
-						monthTracker.monthly_savings += parseFloat(req.body.expense.amount)
-						return monthTracker.save()
-					})
-					.catch(next)
-			}
-			// To edit an expense with the current category Savings
-			else if(req.body.expense.category === 'Savings' || expense.category === 'Savings')
-			{
-				console.log('SEVEN')
-				console.log('SAVINGS UPDATED')
-				console.log('EXPENSE.AMOUNT: ', expense.amount)
-				const updatedSavingsExpense = parseFloat(req.body.expense.amount)
-				console.log('REQ.BODY.EXPENSE.AMOUNT: ', updatedSavingsExpense)
-				MonthTracker.findById(monthTrackerId)
-					.then( monthTracker => {
-						console.log('MONTHTRACKER SAVINGS:', monthTracker.monthly_savings)
-						Account.findOne({owner: req.user._id})
-							.then( account => {
-									console.log('ACCOUNT:', account)
-									console.log('ACCOUNT SAVINGS:', account.savings)
-									if(monthTracker.monthly_savings === 0)
-									{
-										return account.updateOne({ savings: (account.savings + updatedSavingsExpense) })
-									}
-									else
-									{
-										return account.updateOne({ savings: (account.savings - monthTracker.monthly_savings) + (monthTracker.monthly_savings - expense.amount + updatedSavingsExpense) })
-									}
-								})
-							.catch(next)
+	// 					// If expense.category is 'Income'
+	// 					if(expense.category === 'Income')
+	// 					{
+	// 						// Update monthlyTakeHome
+	// 						monthTracker.monthlyTakeHome -= parseFloat(expense.amount)
+	// 						monthTracker.save()
+	// 					}
+	// 					// Update loans for month tracker
+	// 					return monthTracker.updateOne({monthly_loan_payments: monthTracker.monthly_loan_payments + parseFloat(req.body.expense.amount)}) 
+	// 				})
+	// 				.catch(next)
+	// 		}
+	// 		// To edit an expense that is changing its category from Savings to Loans
+	// 		else if(expense.category === 'Savings' && req.body.expense.category === 'Loans')
+	// 		{
+	// 			console.log('FIVE')
+	// 			console.log('SAVINGS TO LOANS')
+	// 			MonthTracker.findById(monthTrackerId)
+	// 				.then( monthTracker => {
+	// 					Account.findOne({owner: req.user._id})
+	// 						.then( account => {
+	// 							account.loans -= parseFloat(req.body.expense.amount)
+	// 							account.savings -= parseFloat(expense.amount)
+	// 							return account.save()
+	// 						})
+	// 						.catch(next)
+	// 					monthTracker.monthly_loan_payments += parseFloat(req.body.expense.amount)
+	// 					monthTracker.monthly_savings -= parseFloat(expense.amount)
+	// 					return monthTracker.save()
+	// 				})
+	// 				.catch(next)
+	// 		}
+	// 		// To edit an expense that is changing its category from Loans to Savings
+	// 		else if(expense.category === 'Loans' && req.body.expense.category === 'Savings')
+	// 		{
+	// 			console.log('SIX')
+	// 			console.log('LOANS TO SAVINGS')
+	// 			MonthTracker.findById(monthTrackerId)
+	// 				.then( monthTracker => {
+	// 					Account.findOne({owner: req.user._id})
+	// 						.then( account => {
+	// 							account.loans += parseFloat(expense.amount)
+	// 							account.savings += parseFloat(req.body.expense.amount)
+	// 							return account.save()
+	// 						})
+	// 						.catch(next)
+	// 					monthTracker.monthly_loan_payments -= parseFloat(expense.amount)
+	// 					monthTracker.monthly_savings += parseFloat(req.body.expense.amount)
+	// 					return monthTracker.save()
+	// 				})
+	// 				.catch(next)
+	// 		}
+	// 		// To edit an expense with the current category Savings
+	// 		else if(req.body.expense.category === 'Savings' || expense.category === 'Savings')
+	// 		{
+	// 			console.log('SEVEN')
+	// 			console.log('SAVINGS UPDATED')
+	// 			console.log('EXPENSE.AMOUNT: ', expense.amount)
+	// 			const updatedSavingsExpense = parseFloat(req.body.expense.amount)
+	// 			console.log('REQ.BODY.EXPENSE.AMOUNT: ', updatedSavingsExpense)
+	// 			MonthTracker.findById(monthTrackerId)
+	// 				.then( monthTracker => {
+	// 					console.log('MONTHTRACKER SAVINGS:', monthTracker.monthly_savings)
+	// 					Account.findOne({owner: req.user._id})
+	// 						.then( account => {
+	// 								console.log('ACCOUNT:', account)
+	// 								console.log('ACCOUNT SAVINGS:', account.savings)
+	// 								if(monthTracker.monthly_savings === 0)
+	// 								{
+	// 									return account.updateOne({ savings: (account.savings + updatedSavingsExpense) })
+	// 								}
+	// 								else
+	// 								{
+	// 									return account.updateOne({ savings: (account.savings - monthTracker.monthly_savings) + (monthTracker.monthly_savings - expense.amount + updatedSavingsExpense) })
+	// 								}
+	// 							})
+	// 						.catch(next)
 
-						if(monthTracker.monthly_savings === 0)
-						{
-							return monthTracker.updateOne({ monthly_savings: updatedSavingsExpense })
-						}
-						else
-						{
-							return monthTracker.updateOne({ monthly_savings: monthTracker.monthly_savings - expense.amount + updatedSavingsExpense })
-						}
-					})
-					.catch(next)
-			}
-			// To edit an expense with the current category Loans
-			else if(expense.category === 'Loans' || req.body.expense.category === 'Loans')
-			{
-				console.log('EIGHT')
-				console.log('LOANS UPDATED')
+	// 					if(monthTracker.monthly_savings === 0)
+	// 					{
+	// 						return monthTracker.updateOne({ monthly_savings: updatedSavingsExpense })
+	// 					}
+	// 					else
+	// 					{
+	// 						return monthTracker.updateOne({ monthly_savings: monthTracker.monthly_savings - expense.amount + updatedSavingsExpense })
+	// 					}
+	// 				})
+	// 				.catch(next)
+	// 		}
+	// 		// To edit an expense with the current category Loans
+	// 		else if(expense.category === 'Loans' || req.body.expense.category === 'Loans')
+	// 		{
+	// 			console.log('EIGHT')
+	// 			console.log('LOANS UPDATED')
 				
-				MonthTracker.findById(monthTrackerId)
-					.then( monthTracker => {
-						Account.findOne({owner: req.user._id})
-							.then( account => {
-								console.log('ACCOUNT LOANS:', account.loans)
-								console.log('MONTHTRACKER LOAN PAYMENTS:', monthTracker.monthly_loan_payments)
-								console.log('EXPENSE.AMOUNT: ', expense.amount)
-								console.log('REQ.BODY.EXPENSE.AMOUNT: ', parseFloat(req.body.expense.amount))
+	// 			MonthTracker.findById(monthTrackerId)
+	// 				.then( monthTracker => {
+	// 					Account.findOne({owner: req.user._id})
+	// 						.then( account => {
+	// 							console.log('ACCOUNT LOANS:', account.loans)
+	// 							console.log('MONTHTRACKER LOAN PAYMENTS:', monthTracker.monthly_loan_payments)
+	// 							console.log('EXPENSE.AMOUNT: ', expense.amount)
+	// 							console.log('REQ.BODY.EXPENSE.AMOUNT: ', parseFloat(req.body.expense.amount))
 
-								if(monthTracker.monthly_loan_payments === 0)
-								{
-									return account.updateOne({ loans: (account.loans + parseFloat(req.body.expense.amount)) })
-								}
-								else
-								{
-									return account.updateOne({ loans: (account.loans + monthTracker.monthly_loan_payments) - (monthTracker.monthly_loan_payments - expense.amount + parseFloat(req.body.expense.amount)) })
-								}
-							})
-							.catch(next)
+	// 							if(monthTracker.monthly_loan_payments === 0)
+	// 							{
+	// 								return account.updateOne({ loans: (account.loans + parseFloat(req.body.expense.amount)) })
+	// 							}
+	// 							else
+	// 							{
+	// 								return account.updateOne({ loans: (account.loans + monthTracker.monthly_loan_payments) - (monthTracker.monthly_loan_payments - expense.amount + parseFloat(req.body.expense.amount)) })
+	// 							}
+	// 						})
+	// 						.catch(next)
 						
-						if(monthTracker.monthly_loan_payments === 0)
-						{
-							return monthTracker.updateOne({ monthly_loan_payments: parseFloat(req.body.expense.amount) })
-						}
-						else
-						{
-							return monthTracker.updateOne({ monthly_loan_payments: (monthTracker.monthly_loan_payments - expense.amount + parseFloat(req.body.expense.amount)) })
-						}
-					})
-					.catch(next)
-			}
-			// To edit an expense with the current category Income
-			else if( expense.category === 'Income' && req.body.expense.category === 'Income' )
-			{
-				console.log('NINE')
-				// monthTracker.monthlyTakeHome = (monthTracker.monthlyTakeHome - expense.amount) + parseFloat(req.body.expense.amount)
-				MonthTracker.findById(monthTrackerId)
-					.then( monthTracker => {
-						return monthTracker.updateOne({ monthlyTakeHome: (monthTracker.monthlyTakeHome - expense.amount) + parseFloat(req.body.expense.amount)})
-					})
-					.catch(next)
-			}
-			// To edit an expense with the current category Income to another category other than Savings and Loans
-			else if( expense.category === 'Income' && req.body.expense.category !== 'Savings' && req.body.expense.category !== 'Loans')
-			{
-				console.log('TEN')
-				MonthTracker.findById(monthTrackerId)
-					.then( monthTracker => {
-						return monthTracker.updateOne({ monthlyTakeHome: (monthTracker.monthlyTakeHome - expense.amount)})
-					})
-					.catch(next)
-			}
-			// To edit an expense from a category other than Income, Savings and Loans to Income category
-			else if( expense.category !== 'Income' && req.body.expense.category === 'Income' && req.body.expense.category !== 'Savings' && req.body.expense.category !== 'Loans')
-			{
-				console.log('ELEVEN')
-				MonthTracker.findById(monthTrackerId)
-					.then( monthTracker => {
-						return monthTracker.updateOne({ monthlyTakeHome: (monthTracker.monthlyTakeHome + parseFloat(req.body.expense.amount))})
-					})
-					.catch(next)
-			}
-			return expense
-		})
-		.then( expense => {
-			// Update the expense, setTimeout() used to solve timing issue
-			setTimeout( () => {
-				console.log('EXPENSE UPDATED')
-				expense.name = req.body.expense.name
-				expense.amount = req.body.expense.amount
-				expense.category = req.body.expense.category
-				return expense.save()
-			}, 60)
-		})
-		.catch(next)
-		// .then( () => {
+	// 					if(monthTracker.monthly_loan_payments === 0)
+	// 					{
+	// 						return monthTracker.updateOne({ monthly_loan_payments: parseFloat(req.body.expense.amount) })
+	// 					}
+	// 					else
+	// 					{
+	// 						return monthTracker.updateOne({ monthly_loan_payments: (monthTracker.monthly_loan_payments - expense.amount + parseFloat(req.body.expense.amount)) })
+	// 					}
+	// 				})
+	// 				.catch(next)
+	// 		}
+	// 		// To edit an expense with the current category Income
+	// 		else if( expense.category === 'Income' && req.body.expense.category === 'Income' )
+	// 		{
+	// 			console.log('NINE')
+	// 			// monthTracker.monthlyTakeHome = (monthTracker.monthlyTakeHome - expense.amount) + parseFloat(req.body.expense.amount)
+	// 			MonthTracker.findById(monthTrackerId)
+	// 				.then( monthTracker => {
+	// 					return monthTracker.updateOne({ monthlyTakeHome: (monthTracker.monthlyTakeHome - expense.amount) + parseFloat(req.body.expense.amount)})
+	// 				})
+	// 				.catch(next)
+	// 		}
+	// 		// To edit an expense with the current category Income to another category other than Savings and Loans
+	// 		else if( expense.category === 'Income' && req.body.expense.category !== 'Savings' && req.body.expense.category !== 'Loans')
+	// 		{
+	// 			console.log('TEN')
+	// 			MonthTracker.findById(monthTrackerId)
+	// 				.then( monthTracker => {
+	// 					return monthTracker.updateOne({ monthlyTakeHome: (monthTracker.monthlyTakeHome - expense.amount)})
+	// 				})
+	// 				.catch(next)
+	// 		}
+	// 		// To edit an expense from a category other than Income, Savings and Loans to Income category
+	// 		else if( expense.category !== 'Income' && req.body.expense.category === 'Income' && req.body.expense.category !== 'Savings' && req.body.expense.category !== 'Loans')
+	// 		{
+	// 			console.log('ELEVEN')
+	// 			MonthTracker.findById(monthTrackerId)
+	// 				.then( monthTracker => {
+	// 					return monthTracker.updateOne({ monthlyTakeHome: (monthTracker.monthlyTakeHome + parseFloat(req.body.expense.amount))})
+	// 				})
+	// 				.catch(next)
+	// 		}
+	// 		return expense
+	// 	})
+	// 	.then( expense => {
+	// 		// Update the expense, setTimeout() used to solve timing issue
+	// 		setTimeout( () => {
+	// 			console.log('EXPENSE UPDATED')
+	// 			expense.name = req.body.expense.name
+	// 			expense.amount = req.body.expense.amount
+	// 			expense.category = req.body.expense.category
+	// 			return expense.save()
+	// 		}, 60)
+	// 	})
+	// 	.catch(next)
+	// 	// .then( () => {
 	
-	// Re-calculate totalExpenses, monthly cashflow, and total cashflow
-	// setTimeout() used to solve timing issue.
-	setTimeout( () => {
-		MonthTracker.findById(monthTrackerId)
-			.populate('expenses')
-			// Re-calculate total expenses
-			.then( monthTracker => {
-				console.log('MONTHTRACKER AFTER TAKEHOME UPDATE: ', monthTracker)
-				// Update total expenses if transaction category isn't 'Income'
-				let updatedTotalExpenses = 0
-				monthTracker.expenses.forEach( expense => {
-					console.log('EXPENSE: ', expense)
-					if(expense.category !== 'Income')
-					{
-						updatedTotalExpenses += parseFloat(expense.amount)
-					}
-				})
-				monthTracker.totalExpenses = updatedTotalExpenses
+	// // Re-calculate totalExpenses, monthly cashflow, and total cashflow
+	// // setTimeout() used to solve timing issue.
+	// setTimeout( () => {
+	// 	MonthTracker.findById(monthTrackerId)
+	// 		.populate('expenses')
+	// 		// Re-calculate total expenses
+	// 		.then( monthTracker => {
+	// 			console.log('MONTHTRACKER AFTER TAKEHOME UPDATE: ', monthTracker)
+	// 			// Update total expenses if transaction category isn't 'Income'
+	// 			let updatedTotalExpenses = 0
+	// 			monthTracker.expenses.forEach( expense => {
+	// 				console.log('EXPENSE: ', expense)
+	// 				if(expense.category !== 'Income')
+	// 				{
+	// 					updatedTotalExpenses += parseFloat(expense.amount)
+	// 				}
+	// 			})
+	// 			monthTracker.totalExpenses = updatedTotalExpenses
 
-				console.log('UPDATED MONTHLY-TAKEHOME: ', monthTracker.monthlyTakeHome)
-				return monthTracker.save()
-			})
-			// Re-calculate monthly cashflow
-			.then( monthTracker => {
-				// Update monthly cashflow
-				console.log('UPDATED MONTHLY-TAKEHOME: ', monthTracker.monthlyTakeHome)
-				console.log('UPDATED TOTAL EXPENSES - MONTHTRACKER: ', monthTracker.totalExpenses)
-				monthTracker.monthly_cashflow = parseFloat(monthTracker.monthlyTakeHome) - parseFloat(monthTracker.totalExpenses)
-				console.log('MONTHLY CASHFLOW: ', monthTracker.monthly_cashflow)
-				return monthTracker.save()
-			})
-			// Re-calculate total cashflow
-			.then( () => {
-				adjustAccountTotalCashflow(req.user._id, next)
-			})
-			.then ( () => res.sendStatus(204))
-			.catch(next)
-	}, 110 )
+	// 			console.log('UPDATED MONTHLY-TAKEHOME: ', monthTracker.monthlyTakeHome)
+	// 			return monthTracker.save()
+	// 		})
+	// 		// Re-calculate monthly cashflow
+	// 		.then( monthTracker => {
+	// 			// Update monthly cashflow
+	// 			console.log('UPDATED MONTHLY-TAKEHOME: ', monthTracker.monthlyTakeHome)
+	// 			console.log('UPDATED TOTAL EXPENSES - MONTHTRACKER: ', monthTracker.totalExpenses)
+	// 			monthTracker.monthly_cashflow = parseFloat(monthTracker.monthlyTakeHome) - parseFloat(monthTracker.totalExpenses)
+	// 			console.log('MONTHLY CASHFLOW: ', monthTracker.monthly_cashflow)
+	// 			return monthTracker.save()
+	// 		})
+	// 		// Re-calculate total cashflow
+	// 		.then( () => {
+	// 			adjustAccountTotalCashflow(req.user._id, next)
+	// 		})
+	// 		.then ( () => res.sendStatus(204))
+	// 		.catch(next)
+	// }, 110 )
+
+	try {
+		const monthTrackerId = req.params.monthTrackerId
+		const expenseId = req.params.expenseId
+
+		delete req.body.expense.owner
+
+		const expense = await Expense.findById(expenseId)
+		requireOwnership(req, expense)
+		const monthTracker = await MonthTracker.findById(monthTrackerId).populate('expenses')
+		const userAccount = await Account.findOne({owner: req.user._id})
+
+		// To edit an expense that is changing its category from Savings to another category, except Loans
+		if(expense.category === 'Savings' && req.body.expense.category !== 'Savings' && req.body.expense.category !== 'Loans')
+		{
+			console.log('ONE')
+			await userAccount.updateOne({ savings: userAccount.savings - parseFloat(expense.amount)})
+
+			// If req.body.expense.category is 'Income'
+			if(req.body.expense.category === 'Income')
+			{
+				// Update monthlyTakeHome
+				monthTracker.monthlyTakeHome += parseFloat(req.body.expense.amount)
+				await monthTracker.save()
+			}						
+			// Update savings for month tracker
+			console.log('EXPENSE.AMOUNT: ', expense.amount)	
+			await monthTracker.updateOne({monthly_savings: monthTracker.monthly_savings - parseFloat(expense.amount)}) 
+		}
+		// To edit an expense that is changing its category from Loans to another category, except Savings
+		else if(expense.category === 'Loans' && req.body.expense.category !== 'Loans' && req.body.expense.category !== 'Savings')
+		{
+			console.log('TWO')
+			await userAccount.updateOne({ loans: userAccount.loans + parseFloat(expense.amount)})
+
+			// If req.body.expense.category is 'Income'
+			if(req.body.expense.category === 'Income')
+			{
+				// Update monthlyTakeHome
+				monthTracker.monthlyTakeHome += parseFloat(req.body.expense.amount)
+				await monthTracker.save()
+			}						
+			// Update savings for month tracker
+			await monthTracker.updateOne({monthly_loan_payments: monthTracker.monthly_loan_payments - parseFloat(expense.amount)}) 
+		}
+		// To edit an expense that is changing its category to Savings, (The previos category cannot be Loans)
+		else if(expense.category !== 'Savings' && req.body.expense.category === 'Savings' && expense.category !== 'Loans')
+		{
+			console.log('THREE')
+			await userAccount.updateOne({ savings: userAccount.savings + parseFloat(req.body.expense.amount)})
+
+			// If expense.category is 'Income'
+			if(expense.category === 'Income')
+			{
+				// Update monthlyTakeHome
+				monthTracker.monthlyTakeHome -= parseFloat(expense.amount)
+				console.log('MONTHLY TAKEHOME UPDATED: ', monthTracker.monthlyTakeHome, expense.amount)
+				await monthTracker.save()
+			}
+			// Update savings for month tracker
+			await monthTracker.updateOne({monthly_savings: monthTracker.monthly_savings + parseFloat(req.body.expense.amount)})
+		}
+		// To edit an expense that is changing its category to Loans, (The previos category cannot be Savings)
+		else if(expense.category !== 'Loans' && req.body.expense.category === 'Loans' && expense.category !== 'Savings')
+		{
+			console.log('FOUR')
+			await userAccount.updateOne({ loans: userAccount.loans - parseFloat(req.body.expense.amount)})
+
+			// If expense.category is 'Income'
+			if(expense.category === 'Income')
+			{
+				// Update monthlyTakeHome
+				monthTracker.monthlyTakeHome -= parseFloat(expense.amount)
+				console.log('MONTHLY TAKEHOME UPDATED: ', monthTracker.monthlyTakeHome, expense.amount)
+				await monthTracker.save()
+			}
+			// Update savings for month tracker
+			await monthTracker.updateOne({monthly_loan_payments: monthTracker.monthly_loan_payments + parseFloat(req.body.expense.amount)})
+		}
+		// To edit an expense that is changing its category from Savings to Loans
+		else if(expense.category === 'Savings' && req.body.expense.category === 'Loans')
+		{
+			console.log('FIVE')
+			console.log('SAVINGS TO LOANS')
+			
+			userAccount.loans -= parseFloat(req.body.expense.amount)
+			userAccount.savings -= parseFloat(expense.amount)
+			await userAccount.save()
+			
+			monthTracker.monthly_loan_payments += parseFloat(req.body.expense.amount)
+			monthTracker.monthly_savings -= parseFloat(expense.amount)
+			await monthTracker.save()
+		}
+		// To edit an expense that is changing its category from Loans to Savings
+		else if(expense.category === 'Loans' && req.body.expense.category === 'Savings')
+		{
+			console.log('SIX')
+			console.log('LOANS TO SAVINGS')
+
+			userAccount.loans += parseFloat(expense.amount)
+			userAccount.savings += parseFloat(req.body.expense.amount)
+			await userAccount.save()
+			
+			monthTracker.monthly_loan_payments -= parseFloat(expense.amount)
+			monthTracker.monthly_savings += parseFloat(req.body.expense.amount)
+			await monthTracker.save()
+		}
+		// To edit an expense with the current category Savings
+		else if(req.body.expense.category === 'Savings' || expense.category === 'Savings')
+		{
+			console.log('SEVEN')
+			console.log('SAVINGS UPDATED')
+			console.log('EXPENSE.AMOUNT: ', expense.amount)
+
+			const updatedSavingsExpense = parseFloat(req.body.expense.amount)
+
+			if(monthTracker.monthly_savings === 0)
+			{
+				await userAccount.updateOne({ savings: (userAccount.savings + updatedSavingsExpense) })
+				await monthTracker.updateOne({ monthly_savings: updatedSavingsExpense })
+			}
+			else
+			{
+				await userAccount.updateOne({ savings: (userAccount.savings - monthTracker.monthly_savings) + (monthTracker.monthly_savings - expense.amount + updatedSavingsExpense) })
+				await monthTracker.updateOne({ monthly_savings: monthTracker.monthly_savings - expense.amount + updatedSavingsExpense })
+			}
+		}
+		// To edit an expense with the current category Loans
+		else if(expense.category === 'Loans' || req.body.expense.category === 'Loans')
+		{
+			console.log('EIGHT')
+			console.log('LOANS UPDATED')
+		
+			if(monthTracker.monthly_loan_payments === 0)
+			{
+				await userAccount.updateOne({ loans: (userAccount.loans + parseFloat(req.body.expense.amount)) })
+				await monthTracker.updateOne({ monthly_loan_payments: parseFloat(req.body.expense.amount) })
+			}
+			else
+			{
+				await userAccount.updateOne({ loans: (userAccount.loans + monthTracker.monthly_loan_payments) - (monthTracker.monthly_loan_payments - expense.amount + parseFloat(req.body.expense.amount)) })
+				await monthTracker.updateOne({ monthly_loan_payments: (monthTracker.monthly_loan_payments - expense.amount + parseFloat(req.body.expense.amount)) })
+			}
+		}
+		// To edit an expense with the current category Income
+		else if( expense.category === 'Income' && req.body.expense.category === 'Income' )
+		{
+			console.log('NINE')
+			await monthTracker.updateOne({ monthlyTakeHome: (monthTracker.monthlyTakeHome - expense.amount) + parseFloat(req.body.expense.amount)})
+		}
+		// To edit an expense with the current category Income to another category other than Savings and Loans
+		else if( expense.category === 'Income' && req.body.expense.category !== 'Savings' && req.body.expense.category !== 'Loans')
+		{
+			console.log('TEN')
+			await monthTracker.updateOne({ monthlyTakeHome: (monthTracker.monthlyTakeHome - expense.amount)})
+		}
+		// To edit an expense from a category other than Income, Savings and Loans to Income category
+		else if( expense.category !== 'Income' && req.body.expense.category === 'Income' && req.body.expense.category !== 'Savings' && req.body.expense.category !== 'Loans')
+		{
+			console.log('ELEVEN')
+			await monthTracker.updateOne({ monthlyTakeHome: (monthTracker.monthlyTakeHome + parseFloat(req.body.expense.amount))})
+		}
+
+		// Update the expense
+		console.log('EXPENSE UPDATING')
+		expense.name = req.body.expense.name
+		expense.amount = req.body.expense.amount
+		expense.category = req.body.expense.category
+		await expense.save()
+		console.log('EXPENSE UPDATED:', expense)
+
+		// Re-calculate totalExpenses, monthly cashflow, and total cashflow
+		// Re-calculate total expenses and update total expenses if transaction category isn't 'Income'
+		let updatedTotalExpenses = 0
+
+		const updatedExpensesInMonthTracker = await MonthTracker.findById(monthTrackerId).populate('expenses')
+		updatedExpensesInMonthTracker.expenses.forEach( expense => {
+			console.log('EXPENSE: ', expense)
+			if(expense.category !== 'Income')
+			{
+				updatedTotalExpenses += parseFloat(expense.amount)
+			}
+		})
+		console.log('TOTAL EXPENSES:', updatedTotalExpenses)
+		updatedExpensesInMonthTracker.totalExpenses = updatedTotalExpenses
+		await updatedExpensesInMonthTracker.updateOne({ totalExpenses: updatedTotalExpenses })
+		// Re-calculate monthly cashflow and update monthly cashflow
+		console.log('UPDATED MONTHLY-TAKEHOME: ', updatedExpensesInMonthTracker.monthlyTakeHome)
+		console.log('UPDATED TOTAL EXPENSES - MONTHTRACKER: ', updatedExpensesInMonthTracker.totalExpenses)
+		// monthTracker.monthly_cashflow = parseFloat(monthTracker.monthlyTakeHome) - parseFloat(monthTracker.totalExpenses)
+		console.log('MONTHLY CASHFLOW: ', updatedExpensesInMonthTracker.monthly_cashflow)
+		await updatedExpensesInMonthTracker.updateOne({ monthly_cashflow: parseFloat(updatedExpensesInMonthTracker.monthlyTakeHome) - parseFloat(updatedExpensesInMonthTracker.totalExpenses) })
+
+		// Re-calculate total cashflow
+		await adjustAccountTotalCashflow(req.user._id, next)
+
+		res.sendStatus(204)
+	}
+	catch(error) {
+		console.log('Error:', error)
+	}
 })
 
 // DESTROY -> DELETE /monthTrackers/:monthTrackerID/:expenseId - to delete a single expense for a monthTracker
