@@ -28,6 +28,25 @@ router.get('/account/:userId', requireToken, async (req, res, next) => {
     }
 })
 
+// CREATE -> POST /account/avklakt0909fa09f0a9ra09 - create a recurring expense
+router.post('/account/:userId', requireToken, async (req, res, next) => {
+    try {
+        const loggedInUserId = req.params.userId
+        const userAccount = await Account.findOne({owner: loggedInUserId})
+        req.body.recurringExpense.recurring = true
+        req.body.recurringExpense.owner = req.user._id
+        console.log('Req.body.expense:', req.body.recurringExpense)
+
+        userAccount.recurrences.push(req.body.recurringExpense)
+        await userAccount.save()
+
+        res.sendStatus(201)
+    }
+    catch(error) {
+        console.log('Error:', error)
+    }
+})
+
 // UPDATE -> PATCH /account/avklakt0909fa09f0a9ra09 - update the logged in user's annual income and loans
 router.patch('/account/:userId', requireToken, removeBlanks, async (req, res, next) => {
     try {
@@ -59,6 +78,8 @@ router.delete('/account/:userId/:recurringId', requireToken, async (req, res, ne
         userAccount.recurrences.splice(expenseIndex, 1)
 
         await userAccount.save()
+
+        res.sendStatus(204)
     }
     catch(error) {
         console.log('Error:', error)
