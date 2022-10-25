@@ -17,18 +17,6 @@ const router = express.Router()
 
 // SHOW -> GET /account/avklakt0909fa09f0a9ra09 - gets the account for the logged in user
 router.get('/account/:userId', requireToken, async (req, res, next) => {
-    // const loggedInUserId = req.params.userId
-
-    // Account.findOne({owner: loggedInUserId})
-    //     .populate('recurrences')
-    //     .populate('monthTrackers')
-    //     .then(handle404)
-    //     .then( account => {
-    //         requireOwnership(req, account)
-    //         console.log('ACCOUNT: ', account)
-    //         res.status(200).json({ account: account.toObject() })
-    //     })
-
     try {
         const loggedInUserId = req.params.userId
         const userAccount = await Account.findOne({owner: loggedInUserId}).populate('recurrences').populate('monthTrackers')
@@ -42,12 +30,6 @@ router.get('/account/:userId', requireToken, async (req, res, next) => {
 
 // UPDATE -> PATCH /account/avklakt0909fa09f0a9ra09 - update the logged in user's annual income and loans
 router.patch('/account/:userId', requireToken, removeBlanks, async (req, res, next) => {
-    // const loggedInUserId = req.params.userId
-
-    // Account.findOneAndUpdate({owner: loggedInUserId}, {income: req.body.account.income, loans: req.body.account.loans})
-    //     .then(() => res.sendStatus(204))
-    //     .catch(next)
-
     try {
         const loggedInUserId = req.params.userId
         await Account.findOneAndUpdate({owner: loggedInUserId}, {income: req.body.account.income, loans: req.body.account.loans})
@@ -60,40 +42,6 @@ router.patch('/account/:userId', requireToken, removeBlanks, async (req, res, ne
 
 // DESTROY -> DELETE /account/avklakt0909fa09f0a9ra09/ahdbgkeidnajka172839 - remove a recurring expense from recurrences array
 router.delete('/account/:userId/:recurringId', requireToken, async (req, res, next) => {
-    // const loggedInUserId = req.params.userId
-    // const recurringId = req.params.recurringId
-
-    // Account.findOne({owner: loggedInUserId})
-    //     // .populate('recurrences')
-    //     .then( account => {
-    //         requireOwnership(req, account)
-    //         let expenseIndex
-    //         // const expenseIndex = account.recurrences.indexOf(recurringId)
-    //         account.recurrences.forEach( (recurrence, index) => {
-    //             if(recurrence.recurringId === recurringId)
-    //             {
-    //                 expenseIndex = index
-    //             }
-    //         })
-    //         console.log('EXPENSE._ID:', recurringId)
-    //         console.log('EXPENSE INDEX: ', expenseIndex)
-    //         // console.log('account.recurrences.indexOf(recurringId): ', account.recurrences.indexOf(recurringId))
-    //         console.log('account.recurrences: ', account.recurrences)
-    //         account.recurrences.splice(expenseIndex, 1)
-
-    //         // delete account.recurrences[expenseIndex]
-
-    //         // Expense.findOne({recurringId: recurringId})
-    //         //     .then( expense => {
-    //         //         return expense.updateOne({ recurring: false })
-    //         //     })
-    //         //     .catch(next)
-
-    //         return account.save()
-    //     })
-    //     .then(() => res.sendStatus(204))
-    //     .catch(next)
-    
     try {
         const loggedInUserId = req.params.userId
         const recurringId = req.params.recurringId
