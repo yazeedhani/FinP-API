@@ -33,14 +33,40 @@ router.post('/account/:userId', requireToken, async (req, res, next) => {
     try {
         const loggedInUserId = req.params.userId
         const userAccount = await Account.findOne({owner: loggedInUserId})
-        req.body.recurringExpense.recurring = true
-        req.body.recurringExpense.owner = req.user._id
-        console.log('Req.body.expense:', req.body.recurringExpense)
+        req.body.recurringTransaction.recurring = true
+        req.body.recurringTransaction.owner = req.user._id
+        // Anytime you create a recurring expense assign it a custom field and random number - called it recurringID
+		req.body.recurringTransaction.recurringId = Math.floor(Math.random() * 1000000).toString() + req.body.recurringTransaction.name 
+        console.log('Req.body.expense:', req.body.recurringTransaction)
 
-        userAccount.recurrences.push(req.body.recurringExpense)
+        userAccount.recurrences.push(req.body.recurringTransaction)
         await userAccount.save()
 
         res.sendStatus(201)
+    }
+    catch(error) {
+        console.log('Error:', error)
+    }
+})
+
+// UPDATE -> PATCH /account/avklakt0909fa09f0a9ra09/recurringTrans/:transId - update a recurring transaction
+router.patch('/account/:userId/recurringTrans/:transId', requireToken, async (req, res, next) => {
+    try {
+        const loggedInUserId = req.params.userId
+        const recurringTransId = req.params.transId
+
+        // Fetch recurring transactions in userAccount - returns an object
+        const userAccountRecurrences = await Account.findOne({owner: loggedInUserId})
+
+        // // Update recurring transaction
+        const recurringTransaction = userAccountRecurrences.recurrences.find( recurrence => recurrence.recurringId === recurringTransId)
+        recurringTransaction.name = req.body.recurringTransaction.name
+        recurringTransaction.category = req.body.recurringTransaction.category
+        recurringTransaction.amount = req.body.recurringTransaction.amount
+
+        userAccountRecurrences.markModified('recurrences');
+        await userAccountRecurrences.save()
+        res.sendStatus(204)
     }
     catch(error) {
         console.log('Error:', error)
