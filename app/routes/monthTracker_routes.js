@@ -269,6 +269,7 @@ router.get('/monthTrackers/:monthTrackerId/:expenseId', requireToken, async (req
 	try {
 		const expenseId = req.params.expenseId
 		const expense = await Expense.findById(expenseId)
+		await handle404(expense)
 		requireOwnership(req, expense)
 		res.status(200).json({ expense: expense.toObject()})
 	}
@@ -346,13 +347,17 @@ router.patch('/monthTrackers/:monthTrackerId/:expenseId', requireToken, removeBl
 	try {
 		const monthTrackerId = req.params.monthTrackerId
 		const expenseId = req.params.expenseId
-
+		console.log('REQ.BODY:', req.body)
 		delete req.body.expense.owner
 
-		const expense = await Expense.findById(expenseId)
-		requireOwnership(req, expense)
 		const monthTracker = await MonthTracker.findById(monthTrackerId).populate('expenses')
+		await handle404(monthTracker)
+		requireOwnership(req, monthTracker)
+		const expense = await Expense.findById(expenseId)
+		await handle404(expense)
+		requireOwnership(req, expense)
 		const userAccount = await Account.findOne({owner: req.user._id})
+		await handle404(userAccount)
 
 		// To edit an expense that is changing its category from Savings to another category, except Loans
 		if(expense.category === 'Savings' && req.body.expense.category !== 'Savings' && req.body.expense.category !== 'Loans')
@@ -518,6 +523,7 @@ router.patch('/monthTrackers/:monthTrackerId/:expenseId', requireToken, removeBl
 		let updatedTotalExpenses = 0
 
 		const updatedExpensesInMonthTracker = await MonthTracker.findById(monthTrackerId).populate('expenses')
+		await handle404(updatedExpensesInMonthTracker)
 		updatedExpensesInMonthTracker.expenses.forEach( expense => {
 			console.log('EXPENSE: ', expense)
 			if(expense.category !== 'Income')
@@ -555,7 +561,7 @@ router.delete('/monthTrackers/:monthTrackerId/:expenseId', requireToken, async (
 
 		// This removes the expense from the expenses array in monthTracker
 		const monthTracker = await MonthTracker.findById(monthTrackerId).populate('expenses')
-
+		await handle404(monthTracker)
 		requireOwnership(req, monthTracker)
 		const expenses = monthTracker.expenses
 		console.log('monthTracker in DELETE route', monthTracker)
