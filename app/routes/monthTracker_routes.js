@@ -33,7 +33,6 @@ const requireToken = passport.authenticate('bearer', { session: false })
 // instantiate a router (mini app that only handles routes)
 const router = express.Router()
 
-
 // Adjust total cashflow for account document	
 const adjustAccountTotalCashflow = async (userId) => {
 	try {
