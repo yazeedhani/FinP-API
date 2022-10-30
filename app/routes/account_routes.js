@@ -61,6 +61,7 @@ router.delete('/account/:userId/:recurringId', requireToken, async (req, res, ne
         userAccount.recurrences.splice(expenseIndex, 1)
 
         await userAccount.save()
+        res.sendStatus(204)
     }
     catch(err) {
         next(err)
