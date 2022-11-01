@@ -2,14 +2,13 @@ const express = require('express')
 const passport =  require('passport')
 
 const Account = require('../models/account')
-const Expense = require('../models/expense')
 
 const customErrors = require('../../lib/custom_errors')
 const handle404 = customErrors.handle404
 const requireOwnership = customErrors.requireOwnership
 
 const removeBlanks = require('../../lib/remove_blank_fields')
-const expense = require('../models/expense')
+const user = require('../models/user')
 
 const requireToken = passport.authenticate('bearer', {session: false})
 
@@ -21,7 +20,7 @@ router.get('/account/:userId', requireToken, async (req, res, next) => {
         const loggedInUserId = req.params.userId
         const userAccount = await Account.findOne({owner: loggedInUserId}).populate('recurrences').populate('monthTrackers')
         await handle404(userAccount)
-        requireOwnership(req, userAccount)
+        await requireOwnership(req, userAccount)
         res.status(200).json({ account: userAccount.toObject() })   
     }
     catch(err) {
@@ -34,6 +33,7 @@ router.post('/account/:userId', requireToken, async (req, res, next) => {
     try {
         const loggedInUserId = req.params.userId
         const userAccount = await Account.findOne({owner: loggedInUserId})
+        await handle404(userAccount)
         req.body.recurringTransaction.recurring = true
         req.body.recurringTransaction.owner = req.user._id
         // Anytime you create a recurring expense assign it a custom field and random number - called it recurringID
@@ -59,7 +59,7 @@ router.patch('/account/:userId/recurringTrans/:transId', requireToken, async (re
         // Fetch recurring transactions in userAccount - returns an object
         const userAccountRecurrences = await Account.findOne({owner: loggedInUserId})
         await handle404(userAccountRecurrences)
-        requireOwnership(req, userAccountRecurrences)
+        await requireOwnership(req, userAccountRecurrences)
         // // Update recurring transaction
         const recurringTransaction = userAccountRecurrences.recurrences.find( recurrence => recurrence.recurringId === recurringTransId)
         recurringTransaction.name = req.body.recurringTransaction.name
@@ -79,7 +79,13 @@ router.patch('/account/:userId/recurringTrans/:transId', requireToken, async (re
 router.patch('/account/:userId', requireToken, removeBlanks, async (req, res, next) => {
     try {
         const loggedInUserId = req.params.userId
-        await Account.findOneAndUpdate({owner: loggedInUserId}, {income: req.body.account.income, loans: req.body.account.loans})
+        const userAccount = await Account.findOne({owner: loggedInUserId})
+        await handle404(userAccount)
+        await requireOwnership(req, userAccount)
+        userAccount.income = req.body.account.income
+        userAccount.loans = req.body.account.loans
+        
+        await userAccount.save()
         res.sendStatus(204)
     }
     catch(err) {
@@ -95,7 +101,7 @@ router.delete('/account/:userId/:recurringId', requireToken, async (req, res, ne
 
         const userAccount = await Account.findOne({owner: loggedInUserId})
         await handle404(userAccount)
-        requireOwnership(req, userAccount)
+        await requireOwnership(req, userAccount)
         let expenseIndex
         // const expenseIndex = account.recurrences.indexOf(recurringId)
         userAccount.recurrences.forEach( (recurrence, index) => {
