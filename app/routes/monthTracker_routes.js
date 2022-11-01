@@ -35,6 +35,7 @@ const adjustAccountTotalCashflow = async (userId) => {
 	try {
 		let totalCashflow = 0
 		const userAccount = await Account.findOne({owner: userId}).populate('monthTrackers')
+		await handle404(userAccount)
 		console.log('userAccount in adjustAccounTotalCashflow()')
 		console.log('userAccount: ', userAccount)
 		userAccount.monthTrackers.forEach( monthTracker => {
@@ -48,8 +49,8 @@ const adjustAccountTotalCashflow = async (userId) => {
 		console.log('End of adjustAccounTotalCashflow()')
 		return totalCashflow	
 	}
-	catch(error) {
-		console.log('Error:', error)
+	catch(err) {
+		next(err)
 	}
 }
 
