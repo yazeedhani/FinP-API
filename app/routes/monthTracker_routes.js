@@ -12,7 +12,6 @@ const Year = require('../models/year')
 // this is a collection of methods that help us detect situations when we need
 // to throw a custom error
 const customErrors = require('../../lib/custom_errors')
-
 // we'll use this function to send 404 when non-existant document is requested
 const handle404 = customErrors.handle404
 // we'll use this function to send 401 when a user tries to modify a resource
@@ -22,9 +21,7 @@ const requireOwnership = customErrors.requireOwnership
 // this is middleware that will remove blank fields from `req.body`, e.g.
 // { example: { title: '', text: 'foo' } } -> { example: { text: 'foo' } }
 const removeBlanks = require('../../lib/remove_blank_fields')
-const { updateOne, deleteOne } = require('../models/monthTracker')
-const monthTracker = require('../models/monthTracker')
-const expense = require('../models/expense')
+
 // passing this as a second argument to `router.<verb>` will make it
 // so that a token MUST be passed for that route to be available
 // it will also set `req.user`
@@ -56,27 +53,6 @@ const adjustAccountTotalCashflow = async (userId) => {
 	}
 }
 
-// Calculate totalExpenses for monthTracker
-const newTotalExpenses = (monthTracker, next) => {
-	let newTotalExpenses = 0
-
-	MonthTracker.findById(monthTracker._id)
-		.populate('expenses')
-		.then( monthTracker => {
-			console.log('MONTHTRACKER FOR NEWTOTALEXPENSES: ', monthTracker)
-			monthTracker.expenses.forEach( expense => {
-				console.log('EXPENSE: ', expense)
-				if( expense.category !== 'Income' )
-				{
-					newTotalExpenses += expense.amount
-				}
-			})
-		})
-		.catch(next)
-	
-	return newTotalExpenses
-}
-
 /******************* MONTHTRACKER ***********************/
 
 // INDEX -> GET /monthTrackers - get monthTrackers only for the logged in user
@@ -84,11 +60,12 @@ router.get('/monthTrackers', requireToken, async (req, res, next) => {
 	try {
 		const userId = req.user._id
 		const monthTrackersByOwner = await MonthTracker.find({owner: userId})
+		await handle404(monthTrackersByOwner)
 		const monthTrackersByOwnerJsObjects = monthTrackersByOwner.map((monthTracker) => monthTracker.toObject())
 		res.status(200).json({ monthTrackers: monthTrackersByOwnerJsObjects })
 	}
-	catch(error) {
-		console.log('Error:', error)
+	catch(err) {
+		next(err)
 	}
 })
 
@@ -97,13 +74,17 @@ router.get('/monthTrackers/:id', requireToken, async (req, res, next) => {
 	// req.params.id will be set based on the `:id` in the route
 	try {
 		const monthTrackerById = await MonthTracker.findById(req.params.id).populate('expenses')
-		// handle 404 here
+		// Check to see if the document queried exists or not to throw 404
+		await handle404(monthTrackerById)
 		console.log('MONTHTRACKER BY ID:', monthTrackerById)
-		requireOwnership(req, monthTrackerById)
+		await requireOwnership(req, monthTrackerById)
 		res.status(200).json({ monthTracker: monthTrackerById.toObject() })
 	}
-	catch(error) {
-		console.log('Error:', error)
+	catch(err) {
+		console.log('Error.name:', err.name)
+		console.log('Error.status:', err.status)
+		console.log('Error:', err)
+		next(err)
 	}
 })
 
@@ -119,6 +100,7 @@ router.post('/monthTrackers', requireToken, async (req, res, next) => {
 
 		// Find account for logged in user and populate monthTrackers
 		const loggedInUserAccount = await Account.findOne({owner: req.user._id})
+		await handle404(loggedInUserAccount)
 		console.log('loggedInUserAccount:', loggedInUserAccount)
 
 		// then set income and properties for req.body.monthTracker
@@ -186,8 +168,8 @@ router.post('/monthTrackers', requireToken, async (req, res, next) => {
 		console.log('Executed adjustTotalCashflow()')
 		res.status(201).json({ monthTracker: newMonthTracker.toObject() })
 	}
-	catch(error) {
-		console.log('Error:', error)
+	catch(err) {
+		next(err)
 	}
 })
 
@@ -200,7 +182,7 @@ router.patch('/monthTrackers/:id', requireToken, removeBlanks, async (req, res, 
 		const monthTrackerId = req.params.id
 	
 		const monthTracker = await MonthTracker.findById(monthTrackerId).populate('expenses')
-		// create a function that handles 404s
+		await handle404(monthTracker)
 		// pass the `req` object and the Mongoose record to `requireOwnership`
 		// it will throw an error if the current user isn't the owner
 		requireOwnership(req, monthTracker)
@@ -226,8 +208,8 @@ router.patch('/monthTrackers/:id', requireToken, removeBlanks, async (req, res, 
 
 		res.sendStatus(204)
 	}
-	catch(error) {
-		console.log('Error:', error)
+	catch(err) {
+		next(err)
 	}
 })
 
@@ -240,10 +222,12 @@ router.delete('/monthTrackers/:monthTrackerId', requireToken, async (req, res, n
 		const owner = req.user._id
 		const monthTrackerId = req.params.monthTrackerId
 		const monthTracker = await MonthTracker.findById(monthTrackerId)
+		await handle404(monthTracker)
 		// throw an error if current user doesn't own `monthTracker`
 		requireOwnership(req, monthTracker)
 		// Adjust total savings and total loan repayments in user's account
 		const userAccount = await Account.findOne({owner: owner})
+		await handle404(userAccount)
 		userAccount.savings -= monthTracker.monthly_savings
 		userAccount.loans += monthTracker.monthly_loan_payments
 		// Remove monthTracker from account
@@ -258,8 +242,8 @@ router.delete('/monthTrackers/:monthTrackerId', requireToken, async (req, res, n
 		// send back 204 and no content if the deletion succeeded
 		res.sendStatus(204)
 	}
-	catch(error) {
-		console.log('Error:', error)
+	catch(err) {
+		next(err)
 	}
 })
 
@@ -271,12 +255,12 @@ router.get('/monthTrackers/:monthTrackerId/expenses', requireToken, async (req, 
 		const monthTrackerId = req.params.monthTrackerId
 
 		const monthTracker = await MonthTracker.findById(monthTrackerId).populate('expenses')
-
+		await handle404(monthTracker)
 		requireOwnership(req, monthTracker)
 		res.status(200).json({ expenses: monthTracker.expenses.toObject() })
 	}
-	catch(error) {
-		console.log('Error:', error)
+	catch(err) {
+		next(err)
 	}
 })
 
@@ -285,11 +269,12 @@ router.get('/monthTrackers/:monthTrackerId/:expenseId', requireToken, async (req
 	try {
 		const expenseId = req.params.expenseId
 		const expense = await Expense.findById(expenseId)
+		await handle404(expense)
 		requireOwnership(req, expense)
 		res.status(200).json({ expense: expense.toObject()})
 	}
-	catch(error) {
-		console.log('Error:', error)
+	catch(err) {
+		next(err)
 	}
 })
 
@@ -350,8 +335,8 @@ router.post('/monthTrackers/:monthTrackerId/expense', requireToken, async (req, 
 
 		res.status(201).json({ expense: newExpense.toObject() })
 	}
-	catch(error) {
-		console.log('Error:', error)
+	catch(err) {
+		next(err)
 	}
 })
 
@@ -362,13 +347,17 @@ router.patch('/monthTrackers/:monthTrackerId/:expenseId', requireToken, removeBl
 	try {
 		const monthTrackerId = req.params.monthTrackerId
 		const expenseId = req.params.expenseId
-
+		console.log('REQ.BODY:', req.body)
 		delete req.body.expense.owner
 
-		const expense = await Expense.findById(expenseId)
-		requireOwnership(req, expense)
 		const monthTracker = await MonthTracker.findById(monthTrackerId).populate('expenses')
+		await handle404(monthTracker)
+		requireOwnership(req, monthTracker)
+		const expense = await Expense.findById(expenseId)
+		await handle404(expense)
+		requireOwnership(req, expense)
 		const userAccount = await Account.findOne({owner: req.user._id})
+		await handle404(userAccount)
 
 		// To edit an expense that is changing its category from Savings to another category, except Loans
 		if(expense.category === 'Savings' && req.body.expense.category !== 'Savings' && req.body.expense.category !== 'Loans')
@@ -534,6 +523,7 @@ router.patch('/monthTrackers/:monthTrackerId/:expenseId', requireToken, removeBl
 		let updatedTotalExpenses = 0
 
 		const updatedExpensesInMonthTracker = await MonthTracker.findById(monthTrackerId).populate('expenses')
+		await handle404(updatedExpensesInMonthTracker)
 		updatedExpensesInMonthTracker.expenses.forEach( expense => {
 			console.log('EXPENSE: ', expense)
 			if(expense.category !== 'Income')
@@ -556,8 +546,8 @@ router.patch('/monthTrackers/:monthTrackerId/:expenseId', requireToken, removeBl
 
 		res.sendStatus(204)
 	}
-	catch(error) {
-		console.log('Error:', error)
+	catch(err) {
+		next(err)
 	}
 })
 
@@ -571,7 +561,7 @@ router.delete('/monthTrackers/:monthTrackerId/:expenseId', requireToken, async (
 
 		// This removes the expense from the expenses array in monthTracker
 		const monthTracker = await MonthTracker.findById(monthTrackerId).populate('expenses')
-
+		await handle404(monthTracker)
 		requireOwnership(req, monthTracker)
 		const expenses = monthTracker.expenses
 		console.log('monthTracker in DELETE route', monthTracker)
@@ -648,8 +638,8 @@ router.delete('/monthTrackers/:monthTrackerId/:expenseId', requireToken, async (
 
 		res.sendStatus(204)
 	}
-	catch(error) {
-		console.log('Error', error)
+	catch(err) {
+		next(err)
 	}
 })
 
