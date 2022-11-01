@@ -45,8 +45,8 @@ router.post('/account/:userId', requireToken, async (req, res, next) => {
 
         res.sendStatus(201)
     }
-    catch(error) {
-        console.log('Error:', error)
+    catch(err) {
+        next(err)
     }
 })
 
@@ -58,7 +58,8 @@ router.patch('/account/:userId/recurringTrans/:transId', requireToken, async (re
 
         // Fetch recurring transactions in userAccount - returns an object
         const userAccountRecurrences = await Account.findOne({owner: loggedInUserId})
-
+        await handle404(userAccountRecurrences)
+        requireOwnership(req, userAccountRecurrences)
         // // Update recurring transaction
         const recurringTransaction = userAccountRecurrences.recurrences.find( recurrence => recurrence.recurringId === recurringTransId)
         recurringTransaction.name = req.body.recurringTransaction.name
@@ -69,8 +70,8 @@ router.patch('/account/:userId/recurringTrans/:transId', requireToken, async (re
         await userAccountRecurrences.save()
         res.sendStatus(204)
     }
-    catch(error) {
-        console.log('Error:', error)
+    catch(err) {
+        next(err)
     }
 })
 
