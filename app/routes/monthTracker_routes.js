@@ -287,7 +287,8 @@ router.post('/monthTrackers/:monthTrackerId/expense', requireToken, async (req, 
 		req.body.expense.owner = req.user._id
 		req.body.expense.monthTracker = monthTrackerId
 		req.body.expense.amount = parseFloat(req.body.expense.amount)
-
+		req.body.expense.date = new Date(req.body.expense.date)
+		console.log('REQ.BODY:', req.body)
 		// Create the new expense
 		const newExpense = await Expense.create(req.body.expense)
 
@@ -348,7 +349,7 @@ router.patch('/monthTrackers/:monthTrackerId/:expenseId', requireToken, removeBl
 	try {
 		const monthTrackerId = req.params.monthTrackerId
 		const expenseId = req.params.expenseId
-		console.log('REQ.BODY:', req.body)
+		// console.log('REQ.BODY:', req.body)
 		delete req.body.expense.owner
 
 		const monthTracker = await MonthTracker.findById(monthTrackerId).populate('expenses')
@@ -511,13 +512,48 @@ router.patch('/monthTrackers/:monthTrackerId/:expenseId', requireToken, removeBl
 			await monthTracker.updateOne({ monthlyTakeHome: (monthTracker.monthlyTakeHome + parseFloat(req.body.expense.amount))})
 		}
 
+		// To handle recurring transaction checkbox
+		// if(req.body.expense.recurring && expense.recurring === false)
+		// {
+		// 	const recurringTransaction = {
+		// 		name: req.body.expense.name,
+		// 		amount: req.body.expense.amount,
+		// 		category: req.body.expense.category,
+		// 		recurring: true,
+		// 		owner: req.user._id,
+		// 		recurringId: Math.floor(Math.random() * 1000000).toString() + req.body.expense.name
+		// 	}
+		// 	userAccount.recurrences.push(recurringTransaction)
+		// 	await userAccount.save()
+		// }
+		// else
+		// {
+		// 	let expenseIndex
+		// 	console.log('HERE')
+		// 	// const expenseIndex = account.recurrences.indexOf(recurringId)
+		// 	userAccount.recurrences.forEach( (recurrence, index) => {
+		// 		console.log('RECURRENCE: ', recurrence)
+		// 		console.log('EXPENSE:', expense)
+		// 		if(recurrence.recurringId === expense.recurringId)
+		// 		{
+		// 			expenseIndex = index
+		// 		}
+		// 	})
+		// 	userAccount.recurrences.splice(expenseIndex, 1)
+		// 	await userAccount.save()
+		// }
+
 		// Update the expense
-		console.log('EXPENSE UPDATING')
+		// console.log('EXPENSE UPDATING')
 		expense.name = req.body.expense.name
 		expense.amount = req.body.expense.amount
 		expense.category = req.body.expense.category
+		expense.recurring = req.body.expense.recurring
+		expense.date = new Date(req.body.expense.date)
 		await expense.save()
+
 		console.log('EXPENSE UPDATED:', expense)
+
 
 		// Re-calculate totalExpenses, monthly cashflow, and total cashflow
 		// Re-calculate total expenses and update total expenses if transaction category isn't 'Income'
@@ -526,20 +562,20 @@ router.patch('/monthTrackers/:monthTrackerId/:expenseId', requireToken, removeBl
 		const updatedExpensesInMonthTracker = await MonthTracker.findById(monthTrackerId).populate('expenses')
 		await handle404(updatedExpensesInMonthTracker)
 		updatedExpensesInMonthTracker.expenses.forEach( expense => {
-			console.log('EXPENSE: ', expense)
+			// console.log('EXPENSE: ', expense)
 			if(expense.category !== 'Income')
 			{
 				updatedTotalExpenses += parseFloat(expense.amount)
 			}
 		})
-		console.log('TOTAL EXPENSES:', updatedTotalExpenses)
+		// console.log('TOTAL EXPENSES:', updatedTotalExpenses)
 		updatedExpensesInMonthTracker.totalExpenses = updatedTotalExpenses
 		await updatedExpensesInMonthTracker.updateOne({ totalExpenses: updatedTotalExpenses })
 		// Re-calculate monthly cashflow and update monthly cashflow
-		console.log('UPDATED MONTHLY-TAKEHOME: ', updatedExpensesInMonthTracker.monthlyTakeHome)
-		console.log('UPDATED TOTAL EXPENSES - MONTHTRACKER: ', updatedExpensesInMonthTracker.totalExpenses)
+		// console.log('UPDATED MONTHLY-TAKEHOME: ', updatedExpensesInMonthTracker.monthlyTakeHome)
+		// console.log('UPDATED TOTAL EXPENSES - MONTHTRACKER: ', updatedExpensesInMonthTracker.totalExpenses)
 		// monthTracker.monthly_cashflow = parseFloat(monthTracker.monthlyTakeHome) - parseFloat(monthTracker.totalExpenses)
-		console.log('MONTHLY CASHFLOW: ', updatedExpensesInMonthTracker.monthly_cashflow)
+		// console.log('MONTHLY CASHFLOW: ', updatedExpensesInMonthTracker.monthly_cashflow)
 		await updatedExpensesInMonthTracker.updateOne({ monthly_cashflow: parseFloat(updatedExpensesInMonthTracker.monthlyTakeHome) - parseFloat(updatedExpensesInMonthTracker.totalExpenses) })
 
 		// Re-calculate total cashflow
