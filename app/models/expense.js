@@ -16,6 +16,10 @@ const expenseSchema = new mongoose.Schema({
         type: Number,
         required: true,
     },
+    date: { 
+        type: Date, 
+        default: Date.now 
+    },
     recurring: {
         type: Boolean,
         default: false
